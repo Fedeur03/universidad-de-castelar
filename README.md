@@ -8,7 +8,7 @@ Extraé la carpeta completa y abrí `index.html` en Chrome, Edge o Firefox. El p
 
 La sesión y las solicitudes se guardan en el navegador. Cada navegador tiene su propia copia de los datos. El período de inscripción está abierto en esta demostración.
 
-El inicio incluye un directorio de servicios. **Plan de estudios** muestra las materias y correlativas del perfil simulado y **Mis horarios** se actualiza con las inscripciones aprobadas. Historia académica, certificados, mesas de examen y bienestar figuran como servicios no disponibles en la demo.
+El inicio incluye un directorio de servicios. **Plan de estudios** muestra las materias y correlativas del perfil simulado y **Mis horarios** se actualiza con las inscripciones aprobadas. Historia académica permite consultar resultados y notas ficticias. Solicitar constancia registra una solicitud de examen vinculada a una inscripción habilitada y su docente, controla fechas y duplicados y conserva el estado Solicitado. Mesas de examen y bienestar figuran como servicios no disponibles en la demo.
 
 ## Demo de 5 minutos
 
@@ -36,4 +36,5 @@ Usá **Restablecer datos de prueba** en la guía para repetir la demo desde el e
 - `emblema.svg` contiene el emblema académico del prototipo.
 - `academico.js` contiene los datos y reglas de inscripción.
 - `app.js` implementa la navegación, los diálogos y el almacenamiento local.
+
 

@@ -78,7 +78,7 @@ function guardar(cambios) {
   }
 }
 
-const pagina = () => ["oferta", "inscripciones", "novedades", "servicios", "plan", "horarios"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inicio";
+const pagina = () => ["oferta", "inscripciones", "novedades", "servicios", "plan", "horarios", "constancias", "historia"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inicio";
 const alumnoActual = () => estudiante(datos.alumno) ?? estudiantes[0];
 const fecha = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" });
 const inscripciones = () => datos.registros.filter(item => item.estudiante === alumnoActual().id);
@@ -111,8 +111,8 @@ const catalogoServicios = [
   ["Mis horarios", "Días, docentes y aulas de tus cursadas aprobadas.", "horarios"],
   ["Inscripción a materias", "Oferta de cursada y selección de comisión.", "oferta"],
   ["Mis inscripciones", "Estado e historial de tus solicitudes.", "inscripciones"],
-  ["Historia académica", "Calificaciones, regularidades y finales."],
-  ["Constancias y certificados", "Trámites de alumno regular y constancias de examen."],
+  ["Historia académica", "Materias, calificaciones y resultados.", "historia"],
+  ["Constancias y certificados", "Solicitudes de constancia de examen.", "constancias"],
   ["Mesas de examen", "Fechas de finales e inscripción a mesas."],
   ["Becas y bienestar", "Programas de apoyo y orientación estudiantil."]
 ];
@@ -126,6 +126,48 @@ function listaServicios(entradas) {
 function servicios() {
   return `${encabezado("Servicios académicos", "Consultas y trámites de autogestión estudiantil.")}
     <section class="panel" aria-label="Directorio de servicios">${listaServicios(catalogoServicios)}</section>`;
+}
+
+function hoyAcademico() {
+  const partes = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }).formatToParts(new Date());
+  return ["year", "month", "day"].map(tipo => partes.find(parte => parte.type === tipo).value).join("-");
+}
+
+function constancias() {
+  const habilitadas = inscripciones().filter(item => ["Aprobada", "En curso", "Finalizada"].includes(item.estado));
+  const solicitudes = (datos.constancias ?? []).filter(item => item.estudiante === alumnoActual().id).slice().reverse();
+  return `${encabezado("Solicitar constancia", "Solicitá una constancia de examen al docente de tu comisión.")}
+    <div class="home-grid"><section class="panel access-panel">
+    ${habilitadas.length ? `<form id="form-constancia">
+      <label>Tipo de constancia<select name="tipo"><option value="examen">Constancia de examen</option></select></label>
+      <label>Materia y comisión<select name="inscripcion" required>${habilitadas.map(item => {
+        const grupo = comision(item.comision);
+        return `<option value="${item.id}">${materia(grupo.materia).nombre} · ${grupo.codigo} · ${grupo.docente}</option>`;
+      }).join("")}</select></label>
+      <label>Fecha del examen<input type="date" name="examen" max="${hoyAcademico()}" required></label>
+      <label>Motivo o destinatario (opcional)<textarea name="motivo" maxlength="300" rows="3"></textarea></label>
+      <p id="resultado-constancia" role="status" hidden></p>
+      <div class="dialog-actions"><button class="button secondary" type="reset">Limpiar</button><button class="button">Solicitar constancia</button></div>
+    </form>` : '<p>No poseés comisiones habilitadas para solicitar constancias.</p><a class="inline-link" href="#oferta">Consultar oferta académica</a>'}
+    </section><section class="panel"><h2>Mis solicitudes</h2>
+    ${solicitudes.length ? `<div class="request-history">${solicitudes.map(item => {
+      const grupo = comision(item.comision);
+      return `<article><strong>${materia(grupo.materia).nombre}</strong><p>Comisión ${grupo.codigo} · Examen ${item.examen.split("-").reverse().join("/")}</p><p>Docente a cargo · ${grupo.docente}</p><small>Solicitud ${item.id}</small><p>${estado(item.estado)}</p></article>`;
+    }).join("")}</div>` : '<p>Todavía no solicitaste constancias.</p>'}
+    <p class="muted">Las solicitudes quedan pendientes de resolución del docente en esta demo.</p></section></div>`;
+}
+
+function historia() {
+  const alumno = alumnoActual();
+  return `${encabezado("Historia académica", alumno.nombre + " · " + alumno.carrera)}
+    <section class="panel"><p>${alumno.aprobadas.length} de ${alumno.plan.length} materias aprobadas del plan.</p>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Historia académica"><table>
+      <thead><tr><th>Materia</th><th>Resultado académico</th><th>Calificación</th></tr></thead>
+      <tbody>${alumno.plan.map(id => {
+        const aprobada = alumno.aprobadas.includes(id);
+        const cursada = inscripcionVigente(alumno, id, datos.registros);
+        return `<tr><td>${materia(id).codigo} · ${materia(id).nombre}</td><td>${aprobada ? "Aprobada" : cursada ? "Inscripción vigente · " + cursada.estado : "Sin cursada registrada"}</td><td>${aprobada ? "8 · Final (dato de prueba)" : "Sin calificación"}</td></tr>`;
+      }).join("")}</tbody></table></div></section>`;
 }
 
 function plan() {
@@ -322,7 +364,7 @@ function render(transicion = false) {
     <p>${aviso.motivo || materia(comision(aviso.comision).materia).nombre + " · " + codigoCursada(comision(aviso.comision))}</p>
     <a class="inline-link" href="#inscripciones">Ver mis inscripciones</a></section>` : "";
   const vista = datos.cerrada ? acceso() :
-    resultado + ({ inicio, oferta, inscripciones: historial, novedades, servicios, plan, horarios })[ruta]();
+    resultado + ({ inicio, oferta, inscripciones: historial, novedades, servicios, plan, horarios, constancias, historia })[ruta]();
   main.innerHTML = `<div class="${transicion ? "view-enter" : ""}">${vista}</div>`;
 }
 
@@ -450,7 +492,7 @@ dialogo.addEventListener("click", event => {
   if (boton.dataset.confirmar) registrar(comision(boton.dataset.confirmar));
   if (boton.hasAttribute("data-reiniciar")) {
     limpiarFiltros();
-    guardar({ alumno: estudiantes[0].id, registros: iniciales, cerrada: false });
+    guardar({ alumno: estudiantes[0].id, registros: iniciales, constancias: [], cerrada: false });
     seleccion = "";
     comisionElegida = "";
     mostrarTodo = false;
@@ -506,6 +548,36 @@ function reiniciarVista() {
 }
 
 main.addEventListener("submit", event => {
+  if (event.target.id === "form-constancia") {
+    event.preventDefault();
+    datos = leer() ?? datos;
+    const campos = new FormData(event.target);
+    const inscripcion = inscripciones().find(item => item.id === campos.get("inscripcion"));
+    const grupo = comision(inscripcion?.comision);
+    const examen = campos.get("examen");
+    const solicitudes = datos.constancias ?? [];
+    const respuesta = main.querySelector("#resultado-constancia");
+    let error = "";
+    if (datos.cerrada || !alumnoActual().activo) error = "Tu usuario no está habilitado para realizar solicitudes.";
+    else if (!inscripcion || !["Aprobada", "En curso", "Finalizada"].includes(inscripcion.estado)) error = "La comisión seleccionada no habilita una constancia.";
+    else if (!grupo?.docente) error = "La comisión no tiene docente asignado.";
+    else if (!examen || examen > hoyAcademico()) error = "Ingresá una fecha igual o anterior a hoy.";
+    else if (solicitudes.some(item => item.estudiante === alumnoActual().id && item.comision === grupo.id && item.examen === examen && ["Solicitado", "Emitido"].includes(item.estado))) error = "Ya existe una solicitud para esta comisión y fecha de examen. Podés consultarla en Mis solicitudes.";
+    if (error) {
+      respuesta.textContent = error;
+      respuesta.hidden = false;
+      return;
+    }
+    const id = crypto.randomUUID();
+    guardar({ constancias: [...solicitudes, { id, estudiante: alumnoActual().id, inscripcion: inscripcion.id, comision: grupo.id, docente: grupo.docente, tipo: "examen", examen, motivo: campos.get("motivo").trim(), estado: "Solicitado", fecha: new Date().toISOString() }] });
+    render();
+    const mensaje = main.querySelector("#resultado-constancia");
+    mensaje.textContent = "Solicitud registrada correctamente y derivada a " + grupo.docente + ". Estado: Solicitado.";
+    mensaje.hidden = false;
+    mensaje.setAttribute("tabindex", "-1");
+    mensaje.focus();
+    return;
+  }
   if (event.target.id !== "form-acceso") return;
   event.preventDefault();
   const campos = new FormData(event.target);
@@ -554,3 +626,4 @@ window.addEventListener("storage", event => {
   if (!dialogo.open) render();
 });
 render();
+

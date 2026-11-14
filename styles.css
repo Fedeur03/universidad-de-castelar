@@ -254,6 +254,11 @@ body:has(.menu-drawer[open]) { overflow: hidden; }
   .subject-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .groups { scroll-margin-top: 18px; }
+.access-panel select, .access-panel textarea { width: 100%; min-width: 0; font: inherit; color: var(--ink); background: white; padding: 8px; border: 1px solid #9daebc; border-radius: 4px; }
+.request-history { max-height: 440px; overflow-y: auto; overflow-wrap: anywhere; }
+.request-history article { border-bottom: 1px solid var(--line); padding-block: 12px; }
+.request-history p { margin-block: 4px; }
+.solicitado { color: #6b4b10; background: #f7efdb; }
 .subject-list button { min-height: 60px; }
 .commission-row > span { overflow-wrap: anywhere; }
 .commission-row:focus-within { outline: 2px solid #ac7015; outline-offset: -2px; }
