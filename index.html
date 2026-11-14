@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Portal de autogestión estudiantil. Prototipo de inscripción a materias.">
+  <title>Portal del estudiante · Universidad De Castelar</title>
+  <link rel="icon" type="image/svg+xml" href="emblema.svg">
+  <link rel="stylesheet" href="styles.css">
+  <script src="academico.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#contenido">Saltar al contenido</a>
+  <header class="masthead">
+    <div class="wrap masthead-inner">
+      <button class="menu-toggle" id="abrir-menu" type="button" aria-haspopup="dialog" aria-controls="menu-movil" aria-expanded="false">
+        <span class="menu-icon" aria-hidden="true"></span> Menú
+      </button>
+      <a class="brand" href="#inicio">
+        <img class="mark" src="emblema.svg" width="48" height="48" alt="">
+        <span><strong>Universidad De Castelar</strong><small>Portal de autogestión estudiantil</small></span>
+      </a>
+      <div class="session">
+        <div class="session-details">
+          <strong id="estudiante"></strong>
+          <nav class="session-links" aria-label="Sesión estudiantil">
+            <button type="button" id="mi-perfil">Mi perfil</button>
+            <button type="button" id="ayuda">Ayuda</button>
+            <button type="button" id="sesion-accion">Cerrar sesión</button>
+          </nav>
+        </div>
+        <img class="session-avatar" src="perfil.svg" width="44" height="44" alt="">
+      </div>
+    </div>
+  </header>
+  <nav class="nav" aria-label="Navegación principal">
+    <div class="wrap nav-inner">
+      <a href="#inicio">Inicio</a>
+      <a href="#oferta">Inscripción a materias</a>
+      <a href="#inscripciones">Mis inscripciones</a>
+      <a href="#servicios">Servicios académicos</a>
+      <a href="#novedades">Novedades</a>
+    </div>
+  </nav>
+  <dialog class="menu-drawer" id="menu-movil" aria-labelledby="titulo-menu">
+    <div class="drawer-header">
+      <h2 id="titulo-menu">Menú del portal</h2>
+      <button type="button" id="cerrar-menu" aria-label="Cerrar menú" autofocus>×</button>
+    </div>
+    <div id="sesion-movil"></div>
+    <nav class="drawer-links" aria-label="Navegación principal"></nav>
+  </dialog>
+  <main class="wrap main" id="contenido" tabindex="-1"></main>
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div class="footer-identity">
+        <img src="emblema.svg" width="38" height="38" alt="">
+        <div><strong>Universidad De Castelar</strong><p>Portal de autogestión estudiantil</p></div>
+      </div>
+      <nav class="footer-links" aria-label="Cursadas">
+        <strong>Cursadas</strong>
+        <a href="#oferta">Inscripción a materias</a>
+        <a href="#inscripciones">Mis inscripciones</a>
+        <a href="#horarios">Mis horarios</a>
+      </nav>
+      <nav class="footer-links" aria-label="Vida académica">
+        <strong>Vida académica</strong>
+        <a href="#plan">Plan de estudios</a>
+        <a href="#servicios">Servicios académicos</a>
+        <a href="#novedades">Novedades</a>
+      </nav>
+      <nav class="footer-links" aria-label="Asistencia">
+        <strong>Asistencia</strong>
+        <button class="text-button" id="footer-ayuda" type="button">Ayuda académica</button>
+        <button class="text-button" id="demo" type="button">Guía de demostración</button>
+      </nav>
+    </div>
+    <div class="wrap footer-bottom">Prototipo educativo sin afiliación oficial · Datos y novedades simulados · Castelar, Buenos Aires</div>
+  </footer>
+  <dialog id="dialogo" aria-labelledby="dialogo-titulo">
+    <div id="dialogo-contenido"></div>
+  </dialog>
+</body>
+</html>
