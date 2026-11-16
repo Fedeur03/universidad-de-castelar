@@ -676,3 +676,41 @@ body:has(.menu-drawer[open]) { overflow: hidden; }
 .hero-home .progress span { background: #315d7d; }
 .hero-home .hero-mini div { background: transparent; border: 0; padding: 8px 0; border-top: 1px solid #d9e1e8; border-radius: 0; }
 .sheet-head { border-inline: 1px solid transparent; }
+.session-links a { color: #f0d8aa; font-size: .84rem; align-self: center; text-underline-offset: 3px; }
+#sesion-movil .session-links a { color: #254e75; }
+.constancia-panel { max-width: 720px; }
+.constancia-panel .form-stack { margin-top: 12px; }
+.constancia-panel summary { cursor: pointer; color: #254e75; }
+.constancia-panel details label { margin-top: 7px; }
+.constancia-panel .dialog-actions { margin-top: 0; }
+.request-history { max-height: none; overflow: visible; margin-top: 10px; }
+.request-history article { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 5px 14px; padding-block: 8px; overflow-wrap: anywhere; }
+.request-history article p { margin-block: 2px; }
+.id-solicitud { display: block; }
+.main .page-title { margin-bottom: 16px; }
+.main .page-title h1 { font-size: clamp(1.65rem, 3.4vw, 2.4rem); margin-bottom: 5px; }
+.main .page-title .eyebrow { display: none; }
+@media (max-height: 900px) {
+  .masthead-inner { min-height: 72px; }
+  .main { padding-block: 18px 28px; }
+  .main .panel { padding-block: 14px; }
+  .main .history { padding-block: 0; }
+  .hero-home .hero-copy, .hero-home .hero-profile { padding-block: 22px; }
+  .quick-card { padding: 14px; gap: 8px; }
+}
+.selector-materia { display: none; }
+.main[data-vista="oferta"] .student-strip { padding-block: 8px; }
+.main[data-vista="oferta"] .enrollment-bar { position: sticky; bottom: 0; z-index: 2; }
+.main[data-vista="perfil"] .profile-main > section:nth-child(2) { order: -1; }
+@media (max-width: 900px) {
+  .selector-materia { display: grid; gap: 4px; font-weight: 700; }
+  .selector-materia select { width: 100%; min-width: 0; min-height: 44px; padding: 5px 8px; font: inherit; border: 1px solid #b9c5d0; border-radius: 6px; background: white; color: var(--ink); }
+  .subjects .subject-list, .subjects .legend, .subjects h2 { display: none; }
+  .main[data-vista="oferta"] .student-strip { display: none; }
+}
+@media (max-width: 700px) {
+  .access-layout .access-panel { order: -1; }
+  .access-layout .access-intro { min-height: 0; }
+  .profile-layout .profile-main { order: -1; }
+  .main[data-vista="perfil"] .profile-avatar { width: 80px; height: 80px; }
+}

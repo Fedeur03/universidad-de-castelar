@@ -121,7 +121,7 @@ function guardar(cambios) {
 }
 
 const registrosActuales = () => leer()?.registros ?? datos.registros;
-const pagina = () => ["inicio", "calendario", "oferta", "inscripciones", "novedades", "servicios", "plan", "horarios", "constancias", "historia", "calificaciones", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inicio";
+const pagina = () => ["inicio", "calendario", "oferta", "inscripciones", "novedades", "servicios", "plan", "horarios", "constancias", "mis-constancias", "historia", "calificaciones", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inicio";
 const alumnoActual = () => estudiante(datos.alumno) ?? estudiantes[0];
 const perfilAlumno = alumno => ({ telefono: "", direccion: "", correoContacto: alumno.correo ?? "", ...(datos.perfiles?.[alumno.id] ?? {}) });
 const COLORES_AVATAR = ["#2f5f8a", "#2f7a6f", "#8a5a3b", "#6b4b8a", "#b4633c", "#28658a"];
@@ -211,26 +211,41 @@ function servicios() {
 
 function constancias() {
   const habilitadas = inscripciones().filter(item => ["Aprobada", "En curso", "Finalizada"].includes(item.estado));
-  const solicitudes = (datos.constancias ?? []).filter(item => item.estudiante === alumnoActual().id).slice().reverse();
   return `${encabezado("Solicitar constancia", "Solicitá una constancia de examen al docente de tu comisión.")}
-    <div class="home-grid"><section class="panel access-panel">
+    <section class="panel access-panel constancia-panel">
+    <a class="inline-link" href="#mis-constancias">Mis constancias →</a>
     ${habilitadas.length ? `<form id="form-constancia" class="form-stack">
-      <label>Tipo de constancia<select name="tipo"><option value="examen">Constancia de examen</option></select></label>
       <label>Materia y comisión<select name="inscripcion" required>${habilitadas.map(item => {
         const grupo = comision(item.comision);
         return `<option value="${item.id}">${materia(grupo.materia).nombre} · ${grupo.codigo} · ${grupo.docente}</option>`;
       }).join("")}</select></label>
       <label>Fecha del examen<input type="date" name="examen" max="${hoyAcademico()}" required></label>
-      <label>Motivo o destinatario (opcional)<textarea name="motivo" maxlength="300" rows="3"></textarea></label>
+      <details><summary>Agregar motivo o destinatario (opcional)</summary><label>Motivo o destinatario<textarea name="motivo" maxlength="300" rows="2"></textarea></label></details>
       <p id="resultado-constancia" role="status" hidden></p>
       <div class="dialog-actions"><button class="button secondary" type="reset">Limpiar</button><button class="button">Solicitar constancia</button></div>
     </form>` : '<p>No poseés comisiones habilitadas para solicitar constancias.</p><a class="inline-link" href="#oferta">Consultar oferta académica</a>'}
-    </section><section class="panel"><h2>Mis solicitudes</h2>
-    ${solicitudes.length ? `<div class="request-history">${solicitudes.map(item => {
+    </section>`;
+}
+
+let paginaConstancias = 1;
+function misConstancias() {
+  const solicitudes = (datos.constancias ?? []).filter(item => item.estudiante === alumnoActual().id).slice().reverse();
+  const porPagina = 3;
+  const paginas = Math.max(1, Math.ceil(solicitudes.length / porPagina));
+  paginaConstancias = Math.min(paginaConstancias, paginas);
+  const inicio = (paginaConstancias - 1) * porPagina;
+  return `${encabezado("Mis constancias", "Historial de solicitudes de constancia de examen.")}
+    <section class="panel"><a class="button" href="#constancias">Solicitar constancia</a>
+    ${solicitudes.length ? `<div class="request-history">${solicitudes.slice(inicio, inicio + porPagina).map(item => {
       const grupo = comision(item.comision);
-      return `<article><strong>${materia(grupo.materia).nombre}</strong><p>Comisión ${grupo.codigo} · Examen ${item.examen.split("-").reverse().join("/")}</p><p>Docente a cargo · ${grupo.docente}</p><small>Solicitud ${item.id}</small><p>${estado(item.estado)}</p></article>`;
+      return `<article><div><strong>${materia(grupo.materia).nombre}</strong><p>Comisión ${grupo.codigo} · Examen ${item.examen.split("-").reverse().join("/")}</p><small>${grupo.docente}</small></div>
+      <div>${estado(item.estado)} <small class="id-solicitud">Solicitud ${item.id}</small></div></article>`;
     }).join("")}</div>` : '<p>Todavía no solicitaste constancias.</p>'}
-    <p class="muted">Las solicitudes quedan pendientes de resolución del docente en esta demo.</p></section></div>`;
+    ${paginas > 1 ? `<nav class="pagination" aria-label="Páginas de constancias">
+      <button class="button secondary" data-pagina-constancia="-1" ${paginaConstancias === 1 ? "disabled" : ""}>Anterior</button>
+      <span role="status" tabindex="-1" id="pagina-constancias">Página ${paginaConstancias} de ${paginas}</span>
+      <button class="button secondary" data-pagina-constancia="1" ${paginaConstancias === paginas ? "disabled" : ""}>Siguiente</button>
+    </nav>` : ""}</section>`;
 }
 
 function estadoMateria(alumno, materiaId) {
@@ -549,7 +564,6 @@ function inicio() {
       <a class="inline-link" href="#historia">Ver historia académica →</a>
     </div>
   </section>
-  ${calendarioAcademico()}
   <section class="panel home-news">
     <div class="section-heading"><h2>Mi actividad académica</h2><a class="inline-link" href="#servicios">Todos los servicios →</a></div>
     ${listaServicios([catalogoServicios[0], catalogoServicios[1], catalogoServicios[4], catalogoServicios[5], catalogoServicios[6], catalogoServicios[7]])}
@@ -586,6 +600,7 @@ function oferta() {
     <div class="offer-grid">
       <aside class="panel subjects"><h2>Materias</h2>
         <label class="check"><input id="todas" type="checkbox" ${mostrarTodo ? "checked" : ""}> Incluir otras carreras</label>
+        <label class="selector-materia">Materia<select id="selector-materia">${listado.map(item => `<option value="${item.id}" ${item.id === elegida.id ? "selected" : ""}>${item.codigo} · ${item.nombre}</option>`).join("")}</select></label>
         <div class="subject-list">${listado.map(item => `<button type="button" data-materia="${item.id}" aria-pressed="${item.id === elegida.id}"><small>${item.codigo}</small><span>${item.nombre}</span></button>`).join("")}</div>
         <p class="legend">${alumno.plan.length} materias en tu plan · ${alumno.aprobadas.length} aprobadas</p>
       </aside>
@@ -818,6 +833,7 @@ function render(transicion = false) {
   sesionCarrera.textContent = cerrada ? "" : alumno.carrera;
   sesionCarrera.hidden = cerrada;
   sesionAccion.textContent = cerrada ? "Iniciar sesión" : "Cerrar sesión";
+  document.querySelector("#mis-constancias").hidden = cerrada;
   botonPerfil.hidden = cerrada;
   avatarPerfil.hidden = cerrada;
   avatarSesion.src = cerrada ? "perfil.svg" : avatarAlumno(alumno);
@@ -826,7 +842,8 @@ function render(transicion = false) {
     if (activo) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
-  const vistas = { inicio, calendario: vistaCalendario, oferta, inscripciones: historial, novedades, servicios, plan, horarios, constancias, historia, calificaciones, perfil };
+  main.dataset.vista = cerrada ? "acceso" : ruta;
+  const vistas = { inicio, calendario: vistaCalendario, oferta, inscripciones: historial, novedades, servicios, plan, horarios, constancias, "mis-constancias": misConstancias, historia, calificaciones, perfil };
   const publicas = new Set(["calendario"]);
   const vista = datos.cerrada && !publicas.has(ruta)
     ? acceso()
@@ -1046,6 +1063,14 @@ function programarPendientes() {
 }
 
 main.addEventListener("change", event => {
+  if (event.target.id === "selector-materia") {
+    seleccion = event.target.value;
+    comisionElegida = "";
+    aviso = null;
+    render();
+    main.querySelector("#selector-materia").focus({ preventScroll: true });
+    return;
+  }
   if (event.target.id === "mostrar-claves") {
     main.querySelectorAll('[name="clave"], [name="confirmacion"]').forEach(input => {
       input.type = event.target.checked ? "text" : "password";
@@ -1082,6 +1107,12 @@ main.addEventListener("change", event => {
 
 main.addEventListener("click", event => {
   const boton = event.target.closest("button");
+  if (boton?.dataset.paginaConstancia) {
+    paginaConstancias += Number(boton.dataset.paginaConstancia);
+    render();
+    main.querySelector("#pagina-constancias")?.focus({ preventScroll: true });
+    return;
+  }
   if (!boton) return;
   if (boton.dataset.ingresar) {
     entrar(boton.dataset.ingresar);
@@ -1229,6 +1260,7 @@ main.addEventListener("submit", event => {
     render();
     const mensaje = main.querySelector("#resultado-constancia");
     mensaje.textContent = "Solicitud registrada correctamente y derivada a " + grupo.docente + ". Estado: Solicitado.";
+    paginaConstancias = 1;
     mensaje.hidden = false;
     mensaje.setAttribute("tabindex", "-1");
     mensaje.focus();
