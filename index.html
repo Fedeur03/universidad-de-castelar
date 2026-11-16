@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Portal de autogestión estudiantil. Prototipo de inscripción a materias.">
+  <meta name="theme-color" content="#10233f">
   <title>Portal del estudiante · Universidad De Castelar</title>
   <link rel="icon" type="image/svg+xml" href="emblema.svg">
   <link rel="stylesheet" href="styles.css">
@@ -24,13 +25,16 @@
       <div class="session">
         <div class="session-details">
           <strong id="estudiante"></strong>
+          <span class="session-career" id="sesion-carrera"></span>
           <nav class="session-links" aria-label="Sesión estudiantil">
             <button type="button" id="mi-perfil">Mi perfil</button>
             <button type="button" id="ayuda">Ayuda</button>
             <button type="button" id="sesion-accion">Cerrar sesión</button>
           </nav>
         </div>
-        <img class="session-avatar" src="perfil.svg" width="44" height="44" alt="">
+        <button class="avatar-button" type="button" id="avatar-perfil" aria-label="Abrir mi perfil">
+          <img class="session-avatar" id="avatar-sesion" src="perfil.svg" width="44" height="44" alt="">
+        </button>
       </div>
     </div>
   </header>
@@ -38,7 +42,7 @@
     <div class="wrap nav-inner">
       <a href="#inicio">Inicio</a>
       <a href="#oferta">Inscripción a materias</a>
-      <a href="#inscripciones">Mis inscripciones</a>
+      <a href="#calendario">Calendario</a>
       <a href="#servicios">Servicios académicos</a>
       <a href="#novedades">Novedades</a>
     </div>
@@ -66,9 +70,10 @@
       </nav>
       <nav class="footer-links" aria-label="Vida académica">
         <strong>Vida académica</strong>
+        <a href="#historia">Historia académica</a>
+        <a href="#calificaciones">Calificaciones</a>
         <a href="#plan">Plan de estudios</a>
-        <a href="#servicios">Servicios académicos</a>
-        <a href="#novedades">Novedades</a>
+        <a href="#perfil">Mi perfil</a>
       </nav>
       <nav class="footer-links" aria-label="Asistencia">
         <strong>Asistencia</strong>
@@ -83,3 +88,4 @@
   </dialog>
 </body>
 </html>
+
