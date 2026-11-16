@@ -674,7 +674,7 @@ function historial() {
         const grupo = comision(registro.comision);
         const { anio, cuatrimestre } = periodo(registro);
         const cancela = ["Pendiente", "Aprobada"].includes(registro.estado);
-        return `<tr><td><strong>${materia(grupo.materia).nombre}</strong><small>${codigoCursada(grupo)} · ${grupo.horario}</small></td><td><time datetime="${registro.fecha}">${fecha.format(new Date(registro.fecha))}</time><small>${cuatrimestre === "1" ? "1.er" : "2.º"} cuatrimestre · ${anio}</small></td><td>${estado(registro.estado)}${registro.motivo ? `<small>${registro.motivo}</small>` : ""}</td><td class="acciones">${cancela ? `<button class="button mini ghost" type="button" data-cancelar="${registro.id}">Cancelar inscripción</button>` : '<span class="accion-na">Sin acciones</span>'}</td></tr>`;
+        return `<tr><td><strong>${materia(grupo.materia).nombre}</strong><small>${codigoCursada(grupo)} · ${grupo.horario}</small></td><td><time datetime="${registro.fecha}">${fecha.format(new Date(registro.fecha))}</time><small>${cuatrimestre === "1" ? "1.er" : "2.º"} cuatrimestre · ${anio}</small></td><td>${estado(registro.estado)}${registro.motivo ? `<small>${registro.motivo}</small>` : ""}</td><td class="acciones">${cancela ? `<button class="button mini secondary cancel-action" type="button" data-cancelar="${registro.id}">Cancelar inscripción</button>` : '<span class="accion-na">Sin acciones</span>'}</td></tr>`;
       }).join("")}</tbody>
       </table></div>` : ""}
       ${paginas > 1 ? `<nav class="pagination" aria-label="Paginación del historial">
@@ -1336,3 +1336,4 @@ window.addEventListener("storage", event => {
 
 render();
 programarPendientes();
+

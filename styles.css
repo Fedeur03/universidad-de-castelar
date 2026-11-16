@@ -714,3 +714,11 @@ body:has(.menu-drawer[open]) { overflow: hidden; }
   .profile-layout .profile-main { order: -1; }
   .main[data-vista="perfil"] .profile-avatar { width: 80px; height: 80px; }
 }
+.cancel-action { white-space: normal; }
+.session-links a { text-decoration: none; }
+.session-links a:hover, .session-links a:focus-visible { text-decoration: underline; }
+.calendar-hero-copy, .access-intro { background: var(--navy); box-shadow: none; border-radius: 8px; }
+.calendar-hero-copy::after { content: none; }
+.calendar-hero-copy .calendar-tag { background: #283f54; border-color: #61778b; }
+.hero-home .hero-actions .button:not(.ghost) { background: #f2f6f9; color: var(--navy); border-color: #f2f6f9; box-shadow: none; }
+.hero-home .hero-actions .button:not(.ghost):hover { background: #dce8f0; }
