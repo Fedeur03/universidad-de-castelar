@@ -209,12 +209,22 @@ function servicios() {
     <section class="panel" aria-label="Directorio de servicios">${listaServicios(catalogoServicios)}</section>`;
 }
 
+const tiposConstancia = new Map([
+  ["parcial", "Constancia de Examen Parcial"],
+  ["final", "Constancia de Examen Final"],
+  ["recuperatorio", "Constancia de Examen Recuperatorio"]
+]);
+
 function constancias() {
   const habilitadas = inscripciones().filter(item => ["Aprobada", "En curso", "Finalizada"].includes(item.estado));
   return `${encabezado("Solicitar constancia", "Solicitá una constancia de examen al docente de tu comisión.")}
     <section class="panel access-panel constancia-panel">
     <a class="inline-link" href="#mis-constancias">Mis constancias →</a>
     ${habilitadas.length ? `<form id="form-constancia" class="form-stack">
+      <label>Tipo de constancia<select name="tipo" required>
+        <option value="">Seleccioná un tipo</option>
+        ${[...tiposConstancia].map(([valor, etiqueta]) => `<option value="${valor}">${etiqueta}</option>`).join("")}
+      </select></label>
       <label>Materia y comisión<select name="inscripcion" required>${habilitadas.map(item => {
         const grupo = comision(item.comision);
         return `<option value="${item.id}">${materia(grupo.materia).nombre} · ${grupo.codigo} · ${grupo.docente}</option>`;
@@ -238,7 +248,7 @@ function misConstancias() {
     <section class="panel"><a class="button" href="#constancias">Solicitar constancia</a>
     ${solicitudes.length ? `<div class="request-history">${solicitudes.slice(inicio, inicio + porPagina).map(item => {
       const grupo = comision(item.comision);
-      return `<article><div><strong>${materia(grupo.materia).nombre}</strong><p>Comisión ${grupo.codigo} · Examen ${item.examen.split("-").reverse().join("/")}</p><small>${grupo.docente}</small></div>
+      return `<article><div><strong>${tiposConstancia.get(item.tipo) ?? "Constancia de examen"}</strong><p>${materia(grupo.materia).nombre} · Comisión ${grupo.codigo}</p><small>${item.examen.split("-").reverse().join("/")} · ${grupo.docente}</small></div>
       <div>${estado(item.estado)} <small class="id-solicitud">Solicitud ${item.id}</small></div></article>`;
     }).join("")}</div>` : '<p>Todavía no solicitaste constancias.</p>'}
     ${paginas > 1 ? `<nav class="pagination" aria-label="Páginas de constancias">
@@ -1242,6 +1252,7 @@ main.addEventListener("submit", event => {
     const inscripcion = inscripciones().find(item => item.id === campos.get("inscripcion"));
     const grupo = comision(inscripcion?.comision);
     const examen = campos.get("examen");
+    const tipo = campos.get("tipo");
     const solicitudes = datos.constancias ?? [];
     const respuesta = main.querySelector("#resultado-constancia");
     let error = "";
@@ -1249,14 +1260,15 @@ main.addEventListener("submit", event => {
     else if (!inscripcion || !["Aprobada", "En curso", "Finalizada"].includes(inscripcion.estado)) error = "La comisión seleccionada no habilita una constancia.";
     else if (!grupo?.docente) error = "La comisión no tiene docente asignado.";
     else if (!examen || examen > hoyAcademico()) error = "Ingresá una fecha igual o anterior a hoy.";
-    else if (solicitudes.some(item => item.estudiante === alumnoActual().id && item.comision === grupo.id && item.examen === examen && ["Solicitado", "Emitido"].includes(item.estado))) error = "Ya existe una solicitud para esta comisión y fecha de examen. Podés consultarla en Mis solicitudes.";
+    else if (!tiposConstancia.has(tipo)) error = "Seleccioná un tipo de constancia.";
+    else if (solicitudes.some(item => item.estudiante === alumnoActual().id && item.comision === grupo.id && item.examen === examen && (item.tipo === tipo || item.tipo === "examen" || !item.tipo) && ["Solicitado", "Emitido"].includes(item.estado))) error = "Ya existe una solicitud para ese examen. Podés consultarla en Mis constancias.";
     if (error) {
       respuesta.textContent = error;
       respuesta.hidden = false;
       return;
     }
     const id = crypto.randomUUID();
-    guardar({ constancias: [...solicitudes, { id, estudiante: alumnoActual().id, inscripcion: inscripcion.id, comision: grupo.id, docente: grupo.docente, tipo: "examen", examen, motivo: campos.get("motivo").trim(), estado: "Solicitado", fecha: new Date().toISOString() }] });
+    guardar({ constancias: [...solicitudes, { id, estudiante: alumnoActual().id, inscripcion: inscripcion.id, comision: grupo.id, docente: grupo.docente, tipo, examen, motivo: campos.get("motivo").trim(), estado: "Solicitado", fecha: new Date().toISOString() }] });
     render();
     const mensaje = main.querySelector("#resultado-constancia");
     mensaje.textContent = "Solicitud registrada correctamente y derivada a " + grupo.docente + ". Estado: Solicitado.";
