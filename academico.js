@@ -44,6 +44,10 @@ const Academico = (() => {
   };
 
   const estudiantes = [
+    { id: "S05", nombre: "Camila Fernández", legajo: "2025-0412", carrera: "Tecnicatura en Desarrollo de Software", carreraId: "tds", facultadId: "ingenieria", plan: ["PRO", "MAT", "ING", "WEB1", "DAW", "BDD", "RED"], aprobadas: ["PRO", "MAT", "WEB1"], notas: { PRO: { valor: 9, anio: "2025", cuatrimestre: "1" }, MAT: { valor: 8, anio: "2025", cuatrimestre: "1" }, WEB1: { valor: 8, anio: "2026", cuatrimestre: "1" } }, activo: true, correo: "camila.fernandez@campus.example", ingreso: "2025", estado: "Regular", codigoActivacion: "AULA-412" },
+    { id: "S06", nombre: "Nicolás Romero", legajo: "2026-0520", carrera: "Tecnicatura en Desarrollo de Software", carreraId: "tds", facultadId: "ingenieria", plan: ["PRO", "MAT", "ING", "WEB1", "DAW", "BDD", "RED"], aprobadas: ["PRO", "ING"], notas: { PRO: { valor: 7, anio: "2026", cuatrimestre: "1" }, ING: { valor: 8, anio: "2026", cuatrimestre: "1" } }, activo: true, correo: "nicolas.romero@campus.example", ingreso: "2026", estado: "Regular", codigoActivacion: "AULA-520" },
+    { id: "S07", nombre: "Valentina Suárez", legajo: "2025-0634", carrera: "Licenciatura en Administración", carreraId: "adm", facultadId: "gestion", plan: ["ADM", "ECO"], aprobadas: ["ADM"], notas: { ADM: { valor: 9, anio: "2025", cuatrimestre: "2" } }, activo: true, correo: "valentina.suarez@campus.example", ingreso: "2025", estado: "Regular", codigoActivacion: "AULA-634" },
+    { id: "S08", nombre: "Tomás Cabrera", legajo: "2026-0718", carrera: "Tecnicatura en Desarrollo de Software", carreraId: "tds", facultadId: "ingenieria", plan: ["PRO", "MAT", "ING", "WEB1", "DAW", "BDD", "RED"], aprobadas: [], notas: {}, activo: true, correo: "tomas.cabrera@campus.example", ingreso: "2026", estado: "Regular", codigoActivacion: "AULA-718" },
     {
       id: "S04",
       nombre: "Federico Acosta",

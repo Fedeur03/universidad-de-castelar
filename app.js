@@ -104,7 +104,7 @@ function leer() {
 }
 
 function plantilla() {
-  return { alumno: estudiantes[0].id, registros: iniciales, constancias: [], fotos: {}, perfiles: {}, cerrada: true };
+  return { alumno: estudiante("S04").id, registros: iniciales, constancias: [], fotos: {}, perfiles: {}, cerrada: true };
 }
 
 let datos = { ...plantilla(), ...(leer() ?? {}) };
@@ -134,7 +134,7 @@ function guardar(cambios) {
 
 const registrosActuales = () => leer()?.registros ?? datos.registros;
 const pagina = () => ["inicio", "calendario", "oferta", "inscripciones", "novedades", "servicios", "plan", "horarios", "constancias", "mis-constancias", "historia", "calificaciones", "perfil", "docente"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inicio";
-const alumnoActual = () => estudiante(datos.alumno) ?? estudiantes[0];
+const alumnoActual = () => estudiante(datos.alumno) ?? estudiante("S04");
 const perfilAlumno = alumno => ({ telefono: "", direccion: "", correoContacto: alumno.correo ?? "", ...(datos.perfiles?.[alumno.id] ?? {}) });
 const COLORES_AVATAR = ["#2f5f8a", "#2f7a6f", "#8a5a3b", "#6b4b8a", "#b4633c", "#28658a"];
 function avatarGenerico(alumno) {
@@ -763,11 +763,22 @@ function acceso() {
         <button class="text-button" type="button" data-acceso="${registro ? "login" : "registro"}">${registro ? "Volver a iniciar sesión" : "¿Primera vez? Activar cuenta"}</button>
         ${registro ? "" : '<button class="text-button" type="button" data-demo-acceso>Ingresar con cuenta de demostración</button>'}
       </div>
+      <details class="access-credentials">
+        <summary>Cuentas para probar el registro</summary>
+        <p>Activá uno de estos legajos ficticios y elegí tu contraseña (mínimo 8 caracteres). Los datos se guardan en este navegador.</p>
+        ${estudiantes.filter(item => item.codigoActivacion).map(item => `<p><strong>${item.nombre}</strong><br>${item.correo}<br>Legajo ${item.legajo} · Código ${item.codigoActivacion}</p>`).join("")}
+      </details>
       ${registro ? "" : `<details class="access-credentials">
         <summary>Datos de acceso de prueba</summary>
-        <div><strong>Estudiante:</strong> ${estudiantes[0].nombre} (${estudiantes[0].legajo})<br><strong>Correo:</strong> ${correoDemo}<br><strong>Contraseña:</strong> <code>${claveDemo}</code></div>
+        <div><strong>Estudiante:</strong> ${estudiante("S04").nombre} (${estudiante("S04").legajo})<br><strong>Correo:</strong> ${correoDemo}<br><strong>Contraseña:</strong> <code>${claveDemo}</code></div>
       </details>`}
     </section></section>`;
+}
+
+async function derivarClave(texto, sal) {
+  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(texto), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: new TextEncoder().encode(sal), iterations: 100000, hash: "SHA-256" }, material, 256);
+  return [...new Uint8Array(bits)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function perfil() {
@@ -1211,7 +1222,7 @@ main.addEventListener("click", event => {
     return;
   }
   if (boton.hasAttribute("data-demo-acceso")) {
-    entrar(estudiantes[0].id);
+    entrar(estudiante("S04").id);
     return;
   }
   if (boton.dataset.materia) {
@@ -1261,7 +1272,7 @@ dialogo.addEventListener("click", event => {
   if (boton.dataset.confirmarCancelacion) cancelarInscripcion(boton.dataset.confirmarCancelacion);
   if (boton.hasAttribute("data-reiniciar")) {
     limpiarFiltros();
-    guardar({ alumno: estudiantes[0].id, registros: iniciales, constancias: [], fotos: {}, cerrada: false });
+    guardar({ alumno: estudiante("S04").id, registros: iniciales, constancias: [], fotos: {}, cerrada: false });
     seleccion = "";
     comisionElegida = "";
     mostrarTodo = false;
@@ -1403,16 +1414,37 @@ main.addEventListener("submit", async event => {
   const correo = campos.get("correo").trim().toLowerCase();
   const claveIngresada = campos.get("clave");
   const error = main.querySelector("#error-acceso");
+  const alumnoRegistro = estudiantes.find(item => item.correo.toLowerCase() === correo);
+  const cuentas = leer()?.cuentas ?? {};
   if (modoAcceso === "registro") {
-    if (datos.activada) error.textContent = "La cuenta de demostración ya está activa. Iniciá sesión con el correo de Mateo.";
+    if (!alumnoRegistro?.activo || alumnoRegistro.legajo !== campos.get("legajo").trim() || (alumnoRegistro.codigoActivacion ?? (alumnoRegistro.id === "S02" ? codigoActivacion : "")) !== campos.get("codigo").trim().toUpperCase()) error.textContent = "El legajo, correo o código de activación no coincide con el padrón de prueba.";
+    else if (cuentas[alumnoRegistro.id]) error.textContent = "Esta cuenta ya está activa. Ingresá con tu correo y contraseña.";
+    else if (claveIngresada.length < 8) error.textContent = "Usá una contraseña de al menos 8 caracteres.";
     else if (claveIngresada !== campos.get("confirmacion")) error.textContent = "Las contraseñas no coinciden.";
-    else if (correo === correoActivacion && campos.get("legajo").trim() === "2026-0218" && campos.get("codigo").trim().toUpperCase() === codigoActivacion && claveIngresada === claveDemo) {
-      entrar(estudiante("S02").id, true);
-      return;
-    } else error.textContent = "Revisá que el legajo, el correo, el código y la contraseña coincidan con los datos de prueba.";
+    else {
+      const sal = crypto.randomUUID();
+      const hash = await derivarClave(claveIngresada, sal);
+      const creada = await operacionAcademica(() => {
+        const actuales = leer()?.cuentas ?? {};
+        if (actuales[alumnoRegistro.id]) return false;
+        return guardar({ cuentas: { ...actuales, [alumnoRegistro.id]: { hash, sal } }, alumno: alumnoRegistro.id, cerrada: false });
+      });
+      if (creada) { reiniciarVista(); return; }
+      error.textContent = "No pudimos activar la cuenta. Revisá si ya fue activada o reintentá el guardado.";
+    }
   } else {
+    if (alumnoRegistro?.activo && cuentas[alumnoRegistro.id]) {
+      const cuenta = cuentas[alumnoRegistro.id];
+      if (await derivarClave(claveIngresada, cuenta.sal) === cuenta.hash) {
+        entrar(alumnoRegistro.id);
+        return;
+      }
+      error.textContent = "No pudimos iniciar sesión. Revisá el correo y la contraseña.";
+      error.hidden = false;
+      return;
+    }
     if (claveIngresada === claveDemo && (correo === correoDemo || (correo === correoActivacion && datos.activada))) {
-      entrar(correo === correoDemo ? estudiantes[0].id : estudiante("S02").id);
+      entrar(correo === correoDemo ? estudiante("S04").id : estudiante("S02").id);
       return;
     }
     error.textContent = "No pudimos iniciar sesión. Revisá el correo y la contraseña.";
