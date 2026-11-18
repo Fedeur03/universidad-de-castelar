@@ -905,28 +905,28 @@ function confirmar(grupo) {
   const usados = ocupados(grupo, registrosActuales());
   const todasOk = checks.every(item => item.ok);
   modal(`<h2 id="dialogo-titulo">Confirmar inscripción</h2>
-    <p class="modal-sub">Revisá los datos y la verificación de requisitos antes de enviar la solicitud.</p>
+    <div class="enrollment-review">
+    <div class="review-scroll">
     <div class="confirm-card">
       <div class="confirm-head"><span class="course-code">${materia(grupo.materia).codigo}</span><span class="status ${libres ? "aprobada" : "rechazada"}">${libres ? libres + (libres === 1 ? " lugar libre" : " lugares libres") : "Sin cupo"}</span></div>
       <h3>${materia(grupo.materia).nombre}</h3>
-      <p class="muted">${datosCarrera.nombre}</p>
       <dl class="confirm-grid">
         <div><dt>Estudiante</dt><dd>${alumno.nombre}</dd></div>
         <div><dt>Legajo</dt><dd>${alumno.legajo}</dd></div>
-        <div><dt>Carrera</dt><dd>${alumno.carrera}</dd></div>
-        <div><dt>Materia</dt><dd>${materia(grupo.materia).nombre}</dd></div>
         <div><dt>Comisión</dt><dd>${grupo.codigo}</dd></div>
         <div><dt>Día y horario</dt><dd>${grupo.dia} · ${grupo.franja}</dd></div>
         <div><dt>Docente</dt><dd>${grupo.docente}</dd></div>
         <div><dt>Aula</dt><dd>${grupo.aula}</dd></div>
-        <div><dt>Cupos</dt><dd>${libres} de ${grupo.capacidad} disponibles · ${usados} ocupados</dd></div>
-        <div><dt>Estado</dt><dd><span class="status pendiente">Pendiente de verificación</span></dd></div>
+        <div><dt>Cupos disponibles</dt><dd>${libres} de ${grupo.capacidad}</dd></div>
       </dl>
     </div>
-    <h3 class="modal-section-title">Verificación de requisitos</h3>
-    <ul class="validation-list">${checks.map(item => `<li class="${item.ok ? "ok" : "fail"}"><span class="check-icon">${icono(item.ok ? "check" : "x")}</span><span><strong>${item.etiqueta}</strong><small>${item.detalle}</small></span></li>`).join("")}</ul>
-    <p class="hint">${todasOk ? "Todos los requisitos están cumplidos." : "La solicitud se puede enviar, pero la verificación final puede rechazarla por los puntos marcados en rojo."} Al confirmar, queda en estado <strong>Pendiente</strong> hasta la resolución.</p>
-    <div class="dialog-actions"><button autofocus class="button secondary" data-cerrar>Volver</button><button class="button" data-confirmar="${grupo.id}">Confirmar inscripción</button></div>`, true);
+    <p class="review-summary">${todasOk ? "Cumplís todos los requisitos de inscripción." : "Revisá estas condiciones antes de confirmar."}</p>
+    ${todasOk ? "" : `<ul class="review-errors">${checks.filter(item => !item.ok).map(item => `<li>${item.detalle}</li>`).join("")}</ul>`}
+    <details class="review-details"><summary>Ver todas las validaciones (${checks.length})</summary>
+    <ul>${checks.map(item => `<li>${item.ok ? "✓" : "!"} ${item.etiqueta}</li>`).join("")}</ul></details>
+    <p class="hint">La solicitud se registra como Pendiente y se valida al confirmar.</p>
+    </div>
+    <div class="dialog-actions"><button autofocus class="button secondary" data-cerrar>Volver</button><button class="button" data-confirmar="${grupo.id}">Confirmar inscripción</button></div></div>`, true);
 }
 
 function operacionAcademica(accion) {

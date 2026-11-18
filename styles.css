@@ -722,3 +722,23 @@ body:has(.menu-drawer[open]) { overflow: hidden; }
 .calendar-hero-copy .calendar-tag { background: #283f54; border-color: #61778b; }
 .hero-home .hero-actions .button:not(.ghost) { background: #f2f6f9; color: var(--navy); border-color: #f2f6f9; box-shadow: none; }
 .hero-home .hero-actions .button:not(.ghost):hover { background: #dce8f0; }
+dialog:has(.enrollment-review) { width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 18px; overflow: hidden; border-radius: 10px; }
+dialog:has(.enrollment-review) #dialogo-contenido { display: flex; flex-direction: column; max-height: calc(100dvh - 62px); }
+dialog:has(.enrollment-review) h2 { flex: none; font-size: 1.4rem; margin-bottom: 10px; }
+.enrollment-review { display: flex; flex-direction: column; min-height: 0; }
+.review-scroll { overflow-y: auto; min-height: 0; padding: 2px 3px; }
+.enrollment-review .confirm-card { padding: 12px; background: #f5f7f9; border-radius: 6px; }
+.enrollment-review .confirm-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 16px; }
+.enrollment-review .confirm-grid div { display: block; padding: 4px 0; }
+.enrollment-review .confirm-grid dd { margin: 0; }
+.enrollment-review .dialog-actions { flex: none; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 8px; background: white; }
+.review-summary { margin: 10px 0 5px; font-weight: 700; }
+.review-errors { margin: 5px 0; padding-left: 20px; color: #80362d; }
+.review-details summary { cursor: pointer; color: #254e75; }
+.review-details ul { margin-block: 5px; }
+.enrollment-review .hint { margin: 8px 0 0; font-size: .85rem; }
+@media(max-width:460px) {
+  dialog:has(.enrollment-review) { padding: 12px; }
+  .enrollment-review .dialog-actions { flex-wrap: nowrap; gap: 8px; }
+  .enrollment-review .dialog-actions .button { padding-inline: 10px; font-size: .86rem; min-height: 44px; }
+}
