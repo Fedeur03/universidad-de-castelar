@@ -742,3 +742,26 @@ dialog:has(.enrollment-review) h2 { flex: none; font-size: 1.4rem; margin-bottom
   .enrollment-review .dialog-actions { flex-wrap: nowrap; gap: 8px; }
   .enrollment-review .dialog-actions .button { padding-inline: 10px; font-size: .86rem; min-height: 44px; }
 }
+/* Mobile navigation */
+.menu-drawer { width: min(340px, 90vw); padding: 0; overflow-y: auto; border-radius: 0; }
+.menu-drawer .drawer-header { min-height: 64px; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; }
+.menu-drawer .drawer-header h2 { color: white; font-size: 1.12rem; margin: 0; }
+.menu-drawer #sesion-movil .session { display: grid; grid-template-columns: minmax(0,1fr); position: relative; padding: 20px; background: #edf2f6; gap: 12px; }
+.menu-drawer .session-details { text-align: left; padding-right: 0; }
+.menu-drawer .session-details > strong { color: #172e43; font-size: 1rem; }
+.menu-drawer .session-career { display: block; color: #526577; white-space: normal; line-height: 1.4; font-size: .85rem; margin-top: 5px; }
+.menu-drawer .session-avatar, .menu-drawer #avatar-perfil { display: none; }
+.menu-drawer #sesion-movil .session-links { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 14px; }
+.menu-drawer #sesion-movil .session-links button, .menu-drawer #sesion-movil .session-links a { display: flex; align-items: center; min-height: 44px; padding: 8px; font-size: .86rem; color: #254e75; background: white; border: 1px solid #d7e0e8; border-radius: 5px; text-decoration: none; text-align: left; }
+.menu-drawer .drawer-links { padding: 8px 12px; }
+.menu-drawer .drawer-links a { min-height: 48px; border-radius: 5px; padding: 12px; margin-block: 3px; }
+@media(max-width:600px) {
+  .wrap { width: calc(100% - 28px); }
+  .main, .main > div, .panel, .profile-main, .home-grid > *, .offer-grid > * { min-width: 0; }
+  .panel { overflow-wrap: anywhere; }
+  .table-wrap { max-width: 100%; overflow-x: auto; }
+  .form-stack input, .form-stack select, .access-panel input { min-width: 0; max-width: 100%; }
+  .profile-links, .section-heading { gap: 10px; flex-wrap: wrap; }
+  .session-career { overflow-wrap: anywhere; }
+}
+.menu-drawer .session-details { align-items: stretch; }
