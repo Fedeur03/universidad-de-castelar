@@ -67,7 +67,7 @@ let aviso = null;
 let perfilAviso = null;
 let modoAcceso = "login";
 const claveDemo = "Campus-2026";
-const correoDemo = "lucia.torres@campus.example";
+const correoDemo = "federico.acosta@campus.example";
 const correoActivacion = "mateo.rios@campus.example";
 const codigoActivacion = "AULA-218";
 const filtros = { anio: "", cuatrimestre: "", estado: "", pagina: 1 };
@@ -112,6 +112,13 @@ datos.registros = Array.isArray(datos.registros) ? datos.registros : iniciales;
 datos.constancias = Array.isArray(datos.constancias) ? datos.constancias : [];
 datos.fotos = datos.fotos && typeof datos.fotos === "object" ? datos.fotos : {};
 datos.perfiles = datos.perfiles && typeof datos.perfiles === "object" ? datos.perfiles : {};
+if (!datos.perfilAcademicoV2) {
+  const existentes = new Set(datos.registros.map(item => item.id));
+  guardar({
+    perfilAcademicoV2: true,
+    registros: [...datos.registros, ...iniciales.filter(item => item.estudiante === "S04" && !existentes.has(item.id))]
+  });
+}
 
 function guardar(cambios) {
   const siguiente = { ...(leer() ?? datos), ...cambios };
@@ -1035,8 +1042,8 @@ function guia() {
 }
 
 const escenarios = [
-  ["Inscripción exitosa", "S01", "DAW-A"],
-  ["Comisión sin cupo", "S01", "DAW-B"],
+  ["Inscripción exitosa", "S04", "DAW-A"],
+  ["Comisión sin cupo", "S04", "DAW-B"],
   ["Estudiante ya inscripto", "S01", "BDD-A"],
   ["Correlativas incumplidas", "S02", "DAW-A"],
   ["Materia fuera de la carrera", "S03", "DAW-A"]
@@ -1400,12 +1407,12 @@ main.addEventListener("submit", async event => {
     if (datos.activada) error.textContent = "La cuenta de demostración ya está activa. Iniciá sesión con el correo de Mateo.";
     else if (claveIngresada !== campos.get("confirmacion")) error.textContent = "Las contraseñas no coinciden.";
     else if (correo === correoActivacion && campos.get("legajo").trim() === "2026-0218" && campos.get("codigo").trim().toUpperCase() === codigoActivacion && claveIngresada === claveDemo) {
-      entrar(estudiantes[1].id, true);
+      entrar(estudiante("S02").id, true);
       return;
     } else error.textContent = "Revisá que el legajo, el correo, el código y la contraseña coincidan con los datos de prueba.";
   } else {
     if (claveIngresada === claveDemo && (correo === correoDemo || (correo === correoActivacion && datos.activada))) {
-      entrar(correo === correoDemo ? estudiantes[0].id : estudiantes[1].id);
+      entrar(correo === correoDemo ? estudiantes[0].id : estudiante("S02").id);
       return;
     }
     error.textContent = "No pudimos iniciar sesión. Revisá el correo y la contraseña.";

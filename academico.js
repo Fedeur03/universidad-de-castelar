@@ -45,6 +45,26 @@ const Academico = (() => {
 
   const estudiantes = [
     {
+      id: "S04",
+      nombre: "Federico Acosta",
+      legajo: "2025-0386",
+      carrera: "Tecnicatura en Desarrollo de Software",
+      carreraId: "tds",
+      facultadId: "ingenieria",
+      plan: ["PRO", "ING", "MAT", "WEB1", "DAW", "BDD", "RED"],
+      aprobadas: ["PRO", "ING", "MAT", "WEB1"],
+      notas: {
+        PRO: { valor: 8, anio: "2025", cuatrimestre: "1", fecha: "2025-07-18", tipo: "Final" },
+        MAT: { valor: 7, anio: "2025", cuatrimestre: "1", fecha: "2025-07-22", tipo: "Final" },
+        ING: { valor: 9, anio: "2025", cuatrimestre: "2", fecha: "2025-12-12", tipo: "Final" },
+        WEB1: { valor: 8, anio: "2026", cuatrimestre: "1", fecha: "2026-07-17", tipo: "Final" }
+      },
+      activo: true,
+      correo: "federico.acosta@campus.example",
+      ingreso: "2025",
+      estado: "Regular"
+    },
+    {
       id: "S01",
       nombre: "Lucía Torres",
       legajo: "2026-0142",
@@ -97,16 +117,20 @@ const Academico = (() => {
   ];
 
   const materias = [
-    { id: "DAW", codigo: "2628", nombre: "Programación Web II", correlativas: ["PRO"], anio: "2.º año" },
-    { id: "BDD", codigo: "2631", nombre: "Bases de Datos", correlativas: [], anio: "2.º año" },
+    { id: "DAW", codigo: "2628", nombre: "Programación Web II", correlativas: ["PRO", "WEB1"], anio: "2.º año" },
+    { id: "BDD", codigo: "2631", nombre: "Bases de Datos", correlativas: ["PRO"], anio: "2.º año" },
     { id: "PRO", codigo: "2614", nombre: "Programación I", correlativas: [], anio: "1.er año" },
-    { id: "RED", codigo: "2642", nombre: "Redes y Comunicaciones", correlativas: [], anio: "2.º año" },
+    { id: "RED", codigo: "2642", nombre: "Redes y Comunicaciones", correlativas: ["MAT"], anio: "2.º año" },
+    { id: "MAT", codigo: "2602", nombre: "Matemática Discreta", correlativas: [], anio: "1.er año" },
+    { id: "WEB1", codigo: "2620", nombre: "Programación Web I", correlativas: ["PRO"], anio: "1.er año" },
     { id: "ING", codigo: "2608", nombre: "Inglés Técnico I", correlativas: [], anio: "1.er año" },
     { id: "ADM", codigo: "3102", nombre: "Administración General", correlativas: [], anio: "1.er año" },
     { id: "ECO", codigo: "3205", nombre: "Economía I", correlativas: [], anio: "1.er año" }
   ];
 
   const comisiones = [
+    { id: "MAT-A", materia: "MAT", codigo: "01-1802", docente: "Verónica Salas", dia: "Miércoles", franja: "18:00–21:00", horario: "Miércoles · 18:00–21:00", aula: "Aula 4", capacidad: 30, ocupados: 20, activa: true },
+    { id: "WEB1-A", materia: "WEB1", codigo: "01-1820", docente: "Esteban Luna", dia: "Jueves", franja: "18:00–21:00", horario: "Jueves · 18:00–21:00", aula: "Laboratorio 1", capacidad: 25, ocupados: 18, activa: true },
     { id: "DAW-A", materia: "DAW", codigo: "01-1929", docente: "Paula Benítez", dia: "Lunes", franja: "18:00–21:00", horario: "Lunes · 18:00–21:00", aula: "Laboratorio 2", capacidad: 24, ocupados: 21, activa: true },
     { id: "DAW-B", materia: "DAW", codigo: "02-1930", docente: "Diego Molina", dia: "Miércoles", franja: "19:00–22:00", horario: "Miércoles · 19:00–22:00", aula: "Laboratorio 3", capacidad: 20, ocupados: 20, activa: true },
     { id: "BDD-A", materia: "BDD", codigo: "01-1941", docente: "Marina Ortiz", dia: "Martes", franja: "18:00–21:00", horario: "Martes · 18:00–21:00", aula: "Laboratorio 1", capacidad: 24, ocupados: 17, activa: true },
@@ -118,6 +142,10 @@ const Academico = (() => {
   ];
 
   const iniciales = [
+    { id: "F04-PRO", estudiante: "S04", comision: "PRO-A", estado: "Finalizada", motivo: "", fecha: "2025-03-04T12:00:00-03:00", anio: "2025", cuatrimestre: "1" },
+    { id: "F04-MAT", estudiante: "S04", comision: "MAT-A", estado: "Finalizada", motivo: "", fecha: "2025-03-04T12:05:00-03:00", anio: "2025", cuatrimestre: "1" },
+    { id: "F04-ING", estudiante: "S04", comision: "ING-A", estado: "Finalizada", motivo: "", fecha: "2025-08-01T12:00:00-03:00", anio: "2025", cuatrimestre: "2" },
+    { id: "F04-WEB1", estudiante: "S04", comision: "WEB1-A", estado: "Finalizada", motivo: "", fecha: "2026-03-02T12:00:00-03:00", anio: "2026", cuatrimestre: "1" },
     { id: "I-001", estudiante: "S01", comision: "BDD-A", estado: "Aprobada", motivo: "", fecha: "2026-11-10T15:00:00-03:00", anio: "2026", cuatrimestre: "2" }
   ];
 
