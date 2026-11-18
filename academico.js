@@ -134,7 +134,7 @@ const Academico = (() => {
   ];
 
   const vigentes = new Set(["Pendiente", "Aprobada", "En curso"]);
-  const conCupo = new Set(["Pendiente", "Aprobada", "En curso"]);
+  const conCupo = new Set(["Aprobada"]);
   const materia = id => materias.find(item => item.id === id);
   const comision = id => comisiones.find(item => item.id === id);
   const estudiante = id => estudiantes.find(item => item.id === id);
@@ -189,7 +189,7 @@ const Academico = (() => {
         clave: "periodo",
         etiqueta: "Período abierto",
         ok: Boolean(periodoAbierto),
-        detalle: periodoAbierto ? "El período de inscripción está abierto hasta el 30/11/2026." : "El período de inscripción está cerrado."
+        detalle: periodoAbierto ? "El período de inscripción está abierto según el calendario académico." : "El período de inscripción está cerrado."
       },
       {
         clave: "previa",

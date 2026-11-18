@@ -5,7 +5,11 @@ const {
 } = Academico;
 
 const clave = "academica-del-sur-v1";
-const periodoAbierto = true;
+function periodoVigente() {
+  const hoy = hoyAcademico();
+  return calendario.find(item => item.categoria === "inscripcion" && item.fecha <= hoy && (item.hasta ?? item.fecha) >= hoy);
+}
+const periodoAbierto = Boolean(periodoVigente());
 const main = document.querySelector("main");
 const nombreSesion = document.querySelector("#estudiante");
 const sesionCarrera = document.querySelector("#sesion-carrera");
@@ -110,10 +114,11 @@ datos.fotos = datos.fotos && typeof datos.fotos === "object" ? datos.fotos : {};
 datos.perfiles = datos.perfiles && typeof datos.perfiles === "object" ? datos.perfiles : {};
 
 function guardar(cambios) {
-  datos = { ...(leer() ?? datos), ...cambios };
-  memoria = datos;
+  const siguiente = { ...(leer() ?? datos), ...cambios };
   try {
-    localStorage.setItem(clave, JSON.stringify(datos));
+    localStorage.setItem(clave, JSON.stringify(siguiente));
+    datos = siguiente;
+    memoria = siguiente;
     return true;
   } catch {
     return false;
@@ -121,7 +126,7 @@ function guardar(cambios) {
 }
 
 const registrosActuales = () => leer()?.registros ?? datos.registros;
-const pagina = () => ["inicio", "calendario", "oferta", "inscripciones", "novedades", "servicios", "plan", "horarios", "constancias", "mis-constancias", "historia", "calificaciones", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inicio";
+const pagina = () => ["inicio", "calendario", "oferta", "inscripciones", "novedades", "servicios", "plan", "horarios", "constancias", "mis-constancias", "historia", "calificaciones", "perfil", "docente"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inicio";
 const alumnoActual = () => estudiante(datos.alumno) ?? estudiantes[0];
 const perfilAlumno = alumno => ({ telefono: "", direccion: "", correoContacto: alumno.correo ?? "", ...(datos.perfiles?.[alumno.id] ?? {}) });
 const COLORES_AVATAR = ["#2f5f8a", "#2f7a6f", "#8a5a3b", "#6b4b8a", "#b4633c", "#28658a"];
@@ -219,6 +224,7 @@ function constancias() {
   const habilitadas = inscripciones().filter(item => ["Aprobada", "En curso", "Finalizada"].includes(item.estado));
   return `${encabezado("Solicitar constancia", "Solicitá una constancia de examen al docente de tu comisión.")}
     <section class="panel access-panel constancia-panel">
+    <p>${alumnoActual().nombre} · Legajo ${alumnoActual().legajo}<br>${alumnoActual().carrera}</p>
     <a class="inline-link" href="#mis-constancias">Mis constancias →</a>
     ${habilitadas.length ? `<form id="form-constancia" class="form-stack">
       <label>Tipo de constancia<select name="tipo" required>
@@ -232,7 +238,7 @@ function constancias() {
       <label>Fecha del examen<input type="date" name="examen" max="${hoyAcademico()}" required></label>
       <details><summary>Agregar motivo o destinatario (opcional)</summary><label>Motivo o destinatario<textarea name="motivo" maxlength="300" rows="2"></textarea></label></details>
       <p id="resultado-constancia" role="status" hidden></p>
-      <div class="dialog-actions"><button class="button secondary" type="reset">Limpiar</button><button class="button">Solicitar constancia</button></div>
+      <div class="dialog-actions"><a class="button secondary" href="#mis-constancias">Cancelar</a><button class="button secondary" type="reset">Limpiar</button><button class="button">Solicitar constancia</button></div>
     </form>` : '<p>No poseés comisiones habilitadas para solicitar constancias.</p><a class="inline-link" href="#oferta">Consultar oferta académica</a>'}
     </section>`;
 }
@@ -249,13 +255,33 @@ function misConstancias() {
     ${solicitudes.length ? `<div class="request-history">${solicitudes.slice(inicio, inicio + porPagina).map(item => {
       const grupo = comision(item.comision);
       return `<article><div><strong>${tiposConstancia.get(item.tipo) ?? "Constancia de examen"}</strong><p>${materia(grupo.materia).nombre} · Comisión ${grupo.codigo}</p><small>${item.examen.split("-").reverse().join("/")} · ${grupo.docente}</small></div>
-      <div>${estado(item.estado)} <small class="id-solicitud">Solicitud ${item.id}</small></div></article>`;
+      <div>${estado(item.estado)} <small class="id-solicitud">Solicitud ${item.id}</small>
+      ${item.estado === "Emitido" ? `<button class="button secondary" data-descargar="${item.id}">Descargar constancia</button>` : ""}
+      ${item.estado === "Rechazado" ? `<p>${escapar(item.observaciones)}</p>` : ""}</div></article>`;
     }).join("")}</div>` : '<p>Todavía no solicitaste constancias.</p>'}
     ${paginas > 1 ? `<nav class="pagination" aria-label="Páginas de constancias">
       <button class="button secondary" data-pagina-constancia="-1" ${paginaConstancias === 1 ? "disabled" : ""}>Anterior</button>
       <span role="status" tabindex="-1" id="pagina-constancias">Página ${paginaConstancias} de ${paginas}</span>
       <button class="button secondary" data-pagina-constancia="1" ${paginaConstancias === paginas ? "disabled" : ""}>Siguiente</button>
     </nav>` : ""}</section>`;
+}
+
+const escapar = valor => String(valor ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+let docenteDemo = "";
+function docente() {
+  const docentes = [...new Set(comisiones.map(grupo => grupo.docente))];
+  docenteDemo ||= docentes[0];
+  const solicitudes = (leer()?.constancias ?? []).filter(item => item.docente === docenteDemo);
+  return `${encabezado("Resolver certificados", "Perfil Docente · Simulación local para la presentación")}
+    <section class="panel"><label>Docente de prueba<select id="docente-demo">${docentes.map(nombre => `<option ${nombre === docenteDemo ? "selected" : ""}>${nombre}</option>`).join("")}</select></label>
+    ${solicitudes.length ? solicitudes.map(item => `<article class="panel">
+      <h2>${tiposConstancia.get(item.tipo) ?? "Constancia de examen"}</h2>
+      <p>${estudiante(item.estudiante).nombre} · ${materia(comision(item.comision).materia).nombre} · Examen ${item.examen}</p>
+      <p>Solicitud ${item.id} · ${estado(item.estado)}</p>
+      ${item.estado === "Solicitado" ? `<form class="form-stack" data-resolver-certificado="${item.id}">
+      <label>Resolución<select name="resolucion"><option value="Emitido">Emitir</option><option value="Rechazado">Rechazar</option></select></label>
+      <label>Motivo del rechazo<input name="observaciones" maxlength="300"></label>
+      <button class="button">Confirmar resolución</button></form>` : "<p>Trámite finalizado.</p>"}</article>`).join("") : "<p>No hay solicitudes para este docente.</p>"}</section>`;
 }
 
 function estadoMateria(alumno, materiaId) {
@@ -493,7 +519,7 @@ function inicio() {
   const resumen = resumenAcademico(alumno);
   return `<section class="hero hero-home">
     <div class="hero-copy">
-      <p class="term">Segundo cuatrimestre · 2026</p>
+      <p class="term">${periodoVigente()?.titulo ?? "Portal académico"}</p>
       <h1>Hola, ${primerNombre(alumno.nombre)}</h1>
       <p class="hero-career">${datosCarrera.nombre}</p>
       <p class="hero-lead">Período de inscripción abierto</p>
@@ -552,7 +578,8 @@ function inicio() {
     </section>
     <section class="panel period">
       <p class="eyebrow">Inscripción a materias</p>
-      <h2>Período abierto</h2>
+      <h2>${periodoAbierto ? "Período de inscripción abierto" : "Inscripciones cerradas"}</h2>
+      <p>${periodoVigente() ? `Desde ${periodoVigente().fecha} hasta ${periodoVigente().hasta ?? periodoVigente().fecha} · ${periodoVigente().titulo}` : "Consultá las próximas fechas en el calendario académico."}</p>
       <p class="period-state"><span></span> Hasta el 30 de noviembre de 2026</p>
       <p>Revisá las correlativas, el cupo y los horarios antes de confirmar. La solicitud pasa por Pendiente y luego se aprueba o rechaza.</p>
       <a class="button" href="#oferta">Elegir comisión ${icono("arrow")}</a>
@@ -598,6 +625,7 @@ function oferta() {
   const listado = materias.filter(item => mostrarTodo || alumno.plan.includes(item.id));
   const elegida = listado.find(item => item.id === seleccion) ?? listado[0];
   const grupos = comisiones.filter(item => item.materia === elegida.id && item.activa);
+  if (grupos.length === 1) comisionElegida = grupos[0].id;
   const grupoElegido = grupos.find(grupo => grupo.id === comisionElegida);
   const vigente = inscripcionVigente(alumno, elegida.id, registrosActuales());
   return `${encabezado("Inscripción a materias", "Seleccioná una materia y revisá sus comisiones antes de confirmar.")}
@@ -637,7 +665,7 @@ function oferta() {
         <div id="validacion-previa" aria-live="polite">${grupoElegido ? validacionPreview(grupoElegido) : ""}</div>
         <div class="enrollment-bar">
           <span id="cursada-seleccionada" aria-live="polite">${grupoElegido ? codigoCursada(grupoElegido) + " · " + alumno.nombre : "Seleccioná una comisión para continuar."}</span>
-          <button class="button" type="button" id="revisar-inscripcion" ${grupoElegido ? "" : "disabled"}>Revisar y confirmar ${icono("arrow")}</button>
+          <button class="button" type="button" id="revisar-inscripcion" ${grupoElegido ? "" : "disabled"}>Confirmar inscripción ${icono("arrow")}</button>
         </div>
       </section>
     </div>`;
@@ -853,7 +881,7 @@ function render(transicion = false) {
     else link.removeAttribute("aria-current");
   });
   main.dataset.vista = cerrada ? "acceso" : ruta;
-  const vistas = { inicio, calendario: vistaCalendario, oferta, inscripciones: historial, novedades, servicios, plan, horarios, constancias, "mis-constancias": misConstancias, historia, calificaciones, perfil };
+  const vistas = { inicio, calendario: vistaCalendario, oferta, inscripciones: historial, novedades, servicios, plan, horarios, constancias, "mis-constancias": misConstancias, historia, calificaciones, perfil, docente };
   const publicas = new Set(["calendario"]);
   const vista = datos.cerrada && !publicas.has(ruta)
     ? acceso()
@@ -901,6 +929,14 @@ function confirmar(grupo) {
     <div class="dialog-actions"><button autofocus class="button secondary" data-cerrar>Volver</button><button class="button" data-confirmar="${grupo.id}">Confirmar inscripción</button></div>`, true);
 }
 
+function operacionAcademica(accion) {
+  return navigator.locks ? navigator.locks.request(clave + "-operaciones", accion) : Promise.resolve().then(accion);
+}
+
+function falloGuardado() {
+  modal('<h2 id="dialogo-titulo">No pudimos completar la operación</h2><p>Los cambios no se guardaron. Conservamos tu selección para que puedas reintentar.</p><button class="button" data-cerrar>Volver</button>');
+}
+
 function resolverSolicitud(id) {
   const registros = registrosActuales();
   const solicitud = registros.find(item => item.id === id);
@@ -910,7 +946,10 @@ function resolverSolicitud(id) {
   const otros = registros.filter(item => item.id !== id);
   const motivo = motivoDeRechazo(alumno, grupo, otros, periodoAbierto);
   const resuelta = { ...solicitud, estado: motivo ? "Rechazada" : "Aprobada", motivo, resuelta: new Date().toISOString() };
-  guardar({ registros: [...otros, resuelta] });
+  if (!guardar({ registros: [...otros, resuelta] })) {
+    guardar({ registros: otros });
+    throw new Error("No se pudo guardar la inscripción.");
+  }
   return resuelta;
 }
 
@@ -923,17 +962,24 @@ async function registrar(grupo) {
     estado: "Pendiente",
     motivo: "",
     fecha: new Date().toISOString(),
-    anio: "2026",
-    cuatrimestre: "2"
+    anio: periodoVigente()?.titulo.includes("2027") ? "2027" : hoyAcademico().slice(0, 4),
+    cuatrimestre: periodoVigente()?.titulo.includes("2027") ? "1" : Number(hoyAcademico().slice(5, 7)) < 8 ? "1" : "2"
   };
-  guardar({ registros: [...registrosActuales(), solicitud] });
+  const guardada = await operacionAcademica(() => guardar({ registros: [...registrosActuales(), solicitud] }));
+  if (!guardada) { falloGuardado(); return; }
   dialogo.close();
   comisionElegida = grupo.id;
   aviso = { estado: "Pendiente", comision: grupo.id };
   render();
   document.querySelector("#resultado")?.focus();
   await esperar(1700);
-  const resuelta = resolverSolicitud(solicitud.id);
+  let resuelta;
+  try {
+    resuelta = await operacionAcademica(() => resolverSolicitud(solicitud.id));
+  } catch {
+    falloGuardado();
+    return;
+  }
   if (!resuelta) return;
   aviso = { estado: resuelta.estado, comision: resuelta.comision, motivo: resuelta.motivo };
   render();
@@ -958,7 +1004,8 @@ function confirmarCancelacion(registro) {
     <div class="dialog-actions"><button autofocus class="button secondary" data-cerrar>Volver</button><button class="button danger" data-confirmar-cancelacion="${registro.id}">Sí, cancelar inscripción</button></div>`);
 }
 
-function cancelarInscripcion(id) {
+async function cancelarInscripcion(id) {
+  await operacionAcademica(() => {
   const registros = registrosActuales();
   const registro = registros.find(item => item.id === id && item.estudiante === alumnoActual().id);
   if (!registro || !["Pendiente", "Aprobada"].includes(registro.estado)) {
@@ -967,18 +1014,22 @@ function cancelarInscripcion(id) {
     return;
   }
   const actualizado = { ...registro, estado: "Cancelada", motivo: "Cancelada por el estudiante", fechaCancelacion: new Date().toISOString() };
-  guardar({ registros: registros.map(item => item.id === id ? actualizado : item) });
+  if (!guardar({ registros: registros.map(item => item.id === id ? actualizado : item) })) {
+    falloGuardado();
+    return;
+  }
   aviso = { estado: "Cancelada", comision: registro.comision };
   dialogo.close();
   render();
   document.querySelector("#resultado")?.focus();
+  });
 }
 
 function guia() {
   modal(`<h2 id="dialogo-titulo">Guía de demostración</h2>
     <p>Elegí un escenario y confirmá la inscripción para ver el resultado. La solicitud pasa por <strong>Pendiente</strong> antes de quedar aprobada o rechazada.</p>
     <div class="demo-list">${escenarios.map(([titulo, id, grupo], i) => `<button data-escenario="${i}"><strong>${titulo}</strong><small>${estudiante(id).nombre} · ${comision(grupo).codigo}</small></button>`).join("")}</div>
-    <div class="demo-scope"><strong>Alcance del MVP</strong><p>Este prototipo implementa el caso de uso <strong>Inscribirse a Materia</strong> del perfil Estudiante (Actividad 4 del TP2). Los módulos de Docente y Administrador no forman parte de esta entrega.</p></div>
+    <div class="demo-scope"><strong>Resolución de certificados</strong><p>Para completar el recorrido del CU02, seleccioná el docente asignado en el perfil docente de prueba.</p><a class="button secondary" href="#docente" id="abrir-docente">Abrir perfil docente de prueba</a></div>
     <p class="hint">Para probar la cancelación, realizá una inscripción exitosa, entrá a <strong>Mis inscripciones</strong> y usá <strong>Cancelar</strong>. El cupo se libera y podés verlo en la oferta.</p>
     <div class="dialog-actions"><button class="button secondary" data-reiniciar>Restablecer datos de prueba</button><button class="button" data-cerrar>Cerrar</button></div>`, true);
 }
@@ -1064,15 +1115,22 @@ function programarPendientes() {
   registrosActuales().filter(item => item.estado === "Pendiente").forEach(item => {
     if (programados.has(item.id)) return;
     programados.add(item.id);
-    setTimeout(() => {
+    setTimeout(async () => {
       programados.delete(item.id);
-      const resuelta = resolverSolicitud(item.id);
+      let resuelta;
+      try {
+        resuelta = await operacionAcademica(() => resolverSolicitud(item.id));
+      } catch {
+        falloGuardado();
+        return;
+      }
       if (resuelta && !dialogo.open) render();
     }, 1600);
   });
 }
 
 main.addEventListener("change", event => {
+  if (event.target.id === "docente-demo") { docenteDemo = event.target.value; render(); return; }
   if (event.target.id === "selector-materia") {
     seleccion = event.target.value;
     comisionElegida = "";
@@ -1117,6 +1175,16 @@ main.addEventListener("change", event => {
 
 main.addEventListener("click", event => {
   const boton = event.target.closest("button");
+  if (boton?.dataset.descargar) {
+    const item = (datos.constancias ?? []).find(item => item.id === boton.dataset.descargar && item.estudiante === alumnoActual().id && item.estado === "Emitido");
+    if (!item) return;
+    const contenido = ["Universidad De Castelar", "CONSTANCIA DE DEMOSTRACIÓN", tiposConstancia.get(item.tipo) ?? "Constancia de examen", estudiante(item.estudiante).nombre, "Legajo " + estudiante(item.estudiante).legajo, materia(comision(item.comision).materia).nombre, "Fecha de examen " + item.examen, "Docente " + item.docente, "Emitida " + item.fechaEmision, "Solicitud " + item.id].join("\n");
+    const url = URL.createObjectURL(new Blob([contenido], { type: "text/plain;charset=utf-8" }));
+    const enlace = document.createElement("a");
+    enlace.href = url; enlace.download = "constancia-" + item.id + ".txt"; enlace.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return;
+  }
   if (boton?.dataset.paginaConstancia) {
     paginaConstancias += Number(boton.dataset.paginaConstancia);
     render();
@@ -1178,6 +1246,7 @@ main.addEventListener("click", event => {
 });
 
 dialogo.addEventListener("click", event => {
+  if (event.target.closest("#abrir-docente")) { dialogo.close(); return; }
   const boton = event.target.closest("button");
   if (!boton) return;
   if (boton.hasAttribute("data-cerrar")) dialogo.close();
@@ -1244,11 +1313,33 @@ function reiniciarVista() {
   window.scrollTo(0, 0);
 }
 
-main.addEventListener("submit", event => {
+main.addEventListener("submit", async event => {
+  if (event.target.dataset.resolverCertificado) {
+    event.preventDefault();
+    const formulario = event.target;
+    const campos = new FormData(formulario);
+    const observaciones = campos.get("observaciones").trim();
+    if (campos.get("resolucion") === "Rechazado" && !observaciones) {
+      formulario.querySelector("[name=observaciones]").setCustomValidity("Indicá el motivo del rechazo.");
+      formulario.querySelector("[name=observaciones]").reportValidity();
+      formulario.querySelector("[name=observaciones]").oninput = event => event.target.setCustomValidity("");
+      return;
+    }
+    await operacionAcademica(() => {
+      const solicitudes = leer()?.constancias ?? [];
+      const item = solicitudes.find(item => item.id === formulario.dataset.resolverCertificado);
+      if (!item || item.estado !== "Solicitado" || item.docente !== docenteDemo) return;
+      if (!guardar({ constancias: solicitudes.map(actual => actual.id === item.id ? { ...actual, estado: campos.get("resolucion"), observaciones, fechaEmision: new Date().toISOString() } : actual) })) { falloGuardado(); return; }
+      render();
+    });
+    return;
+  }
   if (event.target.id === "form-constancia") {
     event.preventDefault();
+    const formulario = event.target;
+    await operacionAcademica(() => {
     datos = leer() ?? datos;
-    const campos = new FormData(event.target);
+    const campos = new FormData(formulario);
     const inscripcion = inscripciones().find(item => item.id === campos.get("inscripcion"));
     const grupo = comision(inscripcion?.comision);
     const examen = campos.get("examen");
@@ -1261,21 +1352,27 @@ main.addEventListener("submit", event => {
     else if (!grupo?.docente) error = "La comisión no tiene docente asignado.";
     else if (!examen || examen > hoyAcademico()) error = "Ingresá una fecha igual o anterior a hoy.";
     else if (!tiposConstancia.has(tipo)) error = "Seleccioná un tipo de constancia.";
-    else if (solicitudes.some(item => item.estudiante === alumnoActual().id && item.comision === grupo.id && item.examen === examen && (item.tipo === tipo || item.tipo === "examen" || !item.tipo) && ["Solicitado", "Emitido"].includes(item.estado))) error = "Ya existe una solicitud para ese examen. Podés consultarla en Mis constancias.";
+    const duplicada = grupo && solicitudes.find(item => item.estudiante === alumnoActual().id && item.comision === grupo.id && item.examen === examen && (item.tipo === tipo || item.tipo === "examen" || !item.tipo) && ["Solicitado", "Emitido"].includes(item.estado));
+    if (!error && duplicada) error = "Ya existe la solicitud " + duplicada.id + " con estado " + duplicada.estado + ". Consultá Mis constancias.";
     if (error) {
       respuesta.textContent = error;
       respuesta.hidden = false;
       return;
     }
     const id = crypto.randomUUID();
-    guardar({ constancias: [...solicitudes, { id, estudiante: alumnoActual().id, inscripcion: inscripcion.id, comision: grupo.id, docente: grupo.docente, tipo, examen, motivo: campos.get("motivo").trim(), estado: "Solicitado", fecha: new Date().toISOString() }] });
+    if (!guardar({ constancias: [...solicitudes, { id, estudiante: alumnoActual().id, inscripcion: inscripcion.id, comision: grupo.id, docente: grupo.docente, tipo, examen, motivo: campos.get("motivo").trim(), estado: "Solicitado", fecha: new Date().toISOString() }] })) {
+      respuesta.textContent = "No pudimos registrar la solicitud. Reintentá conservando estos datos.";
+      respuesta.hidden = false;
+      return;
+    }
     render();
     const mensaje = main.querySelector("#resultado-constancia");
-    mensaje.textContent = "Solicitud registrada correctamente y derivada a " + grupo.docente + ". Estado: Solicitado.";
+    mensaje.textContent = "Solicitud " + id + " registrada correctamente. " + tiposConstancia.get(tipo) + " · " + materia(grupo.materia).nombre + " · Docente " + grupo.docente + " · Estado: Solicitado. Estará disponible cuando el docente la emita.";
     paginaConstancias = 1;
     mensaje.hidden = false;
     mensaje.setAttribute("tabindex", "-1");
     mensaje.focus();
+    });
     return;
   }
   if (event.target.id === "form-perfil") {
