@@ -44,10 +44,10 @@ const Academico = (() => {
   };
 
   const estudiantes = [
-    { id: "S05", nombre: "Camila Fernández", legajo: "2025-0412", carrera: "Tecnicatura en Desarrollo de Software", carreraId: "tds", facultadId: "ingenieria", plan: ["PRO", "MAT", "ING", "WEB1", "DAW", "BDD", "RED"], aprobadas: ["PRO", "MAT", "WEB1"], notas: { PRO: { valor: 9, anio: "2025", cuatrimestre: "1" }, MAT: { valor: 8, anio: "2025", cuatrimestre: "1" }, WEB1: { valor: 8, anio: "2026", cuatrimestre: "1" } }, activo: true, correo: "camila.fernandez@campus.example", ingreso: "2025", estado: "Regular", codigoActivacion: "AULA-412" },
-    { id: "S06", nombre: "Nicolás Romero", legajo: "2026-0520", carrera: "Tecnicatura en Desarrollo de Software", carreraId: "tds", facultadId: "ingenieria", plan: ["PRO", "MAT", "ING", "WEB1", "DAW", "BDD", "RED"], aprobadas: ["PRO", "ING"], notas: { PRO: { valor: 7, anio: "2026", cuatrimestre: "1" }, ING: { valor: 8, anio: "2026", cuatrimestre: "1" } }, activo: true, correo: "nicolas.romero@campus.example", ingreso: "2026", estado: "Regular", codigoActivacion: "AULA-520" },
+    { id: "S05", nombre: "Camila Fernández", legajo: "2025-0412", carrera: "Tecnicatura en Desarrollo de Software", carreraId: "tds", facultadId: "ingenieria", plan: ["PRO", "MAT", "ING", "WEB1", "DAW", "BDD", "RED", "MOB"], aprobadas: ["PRO", "MAT", "WEB1"], notas: { PRO: { valor: 9, anio: "2025", cuatrimestre: "1" }, MAT: { valor: 8, anio: "2025", cuatrimestre: "1" }, WEB1: { valor: 8, anio: "2026", cuatrimestre: "1" } }, activo: true, correo: "camila.fernandez@campus.example", ingreso: "2025", estado: "Regular", codigoActivacion: "AULA-412" },
+    { id: "S06", nombre: "Nicolás Romero", legajo: "2026-0520", carrera: "Tecnicatura en Desarrollo de Software", carreraId: "tds", facultadId: "ingenieria", plan: ["PRO", "MAT", "ING", "WEB1", "DAW", "BDD", "RED", "MOB"], aprobadas: ["PRO", "ING"], notas: { PRO: { valor: 7, anio: "2026", cuatrimestre: "1" }, ING: { valor: 8, anio: "2026", cuatrimestre: "1" } }, activo: true, correo: "nicolas.romero@campus.example", ingreso: "2026", estado: "Regular", codigoActivacion: "AULA-520" },
     { id: "S07", nombre: "Valentina Suárez", legajo: "2025-0634", carrera: "Licenciatura en Administración", carreraId: "adm", facultadId: "gestion", plan: ["ADM", "ECO"], aprobadas: ["ADM"], notas: { ADM: { valor: 9, anio: "2025", cuatrimestre: "2" } }, activo: true, correo: "valentina.suarez@campus.example", ingreso: "2025", estado: "Regular", codigoActivacion: "AULA-634" },
-    { id: "S08", nombre: "Tomás Cabrera", legajo: "2026-0718", carrera: "Tecnicatura en Desarrollo de Software", carreraId: "tds", facultadId: "ingenieria", plan: ["PRO", "MAT", "ING", "WEB1", "DAW", "BDD", "RED"], aprobadas: [], notas: {}, activo: true, correo: "tomas.cabrera@campus.example", ingreso: "2026", estado: "Regular", codigoActivacion: "AULA-718" },
+    { id: "S08", nombre: "Tomás Cabrera", legajo: "2026-0718", carrera: "Tecnicatura en Desarrollo de Software", carreraId: "tds", facultadId: "ingenieria", plan: ["PRO", "MAT", "ING", "WEB1", "DAW", "BDD", "RED", "MOB"], aprobadas: [], notas: {}, activo: true, correo: "tomas.cabrera@campus.example", ingreso: "2026", estado: "Regular", codigoActivacion: "AULA-718" },
     {
       id: "S04",
       nombre: "Federico Acosta",
@@ -55,7 +55,7 @@ const Academico = (() => {
       carrera: "Tecnicatura en Desarrollo de Software",
       carreraId: "tds",
       facultadId: "ingenieria",
-      plan: ["PRO", "ING", "MAT", "WEB1", "DAW", "BDD", "RED"],
+      plan: ["PRO", "ING", "MAT", "WEB1", "DAW", "BDD", "RED", "MOB"],
       aprobadas: ["PRO", "ING", "MAT", "WEB1"],
       notas: {
         PRO: { valor: 8, anio: "2025", cuatrimestre: "1", fecha: "2025-07-18", tipo: "Final" },
@@ -75,7 +75,7 @@ const Academico = (() => {
       carrera: "Tecnicatura en Desarrollo de Software",
       carreraId: "tds",
       facultadId: "ingenieria",
-      plan: ["DAW", "BDD", "PRO", "RED", "ING"],
+      plan: ["DAW", "BDD", "PRO", "RED", "ING", "MOB"],
       aprobadas: ["PRO", "ING"],
       notas: {
         PRO: { valor: 8, anio: "2026", cuatrimestre: "1" },
@@ -93,7 +93,7 @@ const Academico = (() => {
       carrera: "Tecnicatura en Desarrollo de Software",
       carreraId: "tds",
       facultadId: "ingenieria",
-      plan: ["DAW", "BDD", "PRO", "RED", "ING"],
+      plan: ["DAW", "BDD", "PRO", "RED", "ING", "MOB"],
       aprobadas: [],
       notas: {},
       activo: true,
@@ -128,6 +128,7 @@ const Academico = (() => {
     { id: "MAT", codigo: "2602", nombre: "Matemática Discreta", correlativas: [], anio: "1.er año" },
     { id: "WEB1", codigo: "2620", nombre: "Programación Web I", correlativas: ["PRO"], anio: "1.er año" },
     { id: "ING", codigo: "2608", nombre: "Inglés Técnico I", correlativas: [], anio: "1.er año" },
+    { id: "MOB", codigo: "2650", nombre: "Desarrollo de Aplicaciones Móviles", correlativas: ["DAW"], anio: "3.er año" },
     { id: "ADM", codigo: "3102", nombre: "Administración General", correlativas: [], anio: "1.er año" },
     { id: "ECO", codigo: "3205", nombre: "Economía I", correlativas: [], anio: "1.er año" }
   ];
@@ -142,7 +143,8 @@ const Academico = (() => {
     { id: "RED-A", materia: "RED", codigo: "01-1956", docente: "José Navarro", dia: "Viernes", franja: "18:00–21:00", horario: "Viernes · 18:00–21:00", aula: "Aula 12", capacidad: 21, ocupados: 16, activa: true },
     { id: "ING-A", materia: "ING", codigo: "01-1888", docente: "Carla Núñez", dia: "Sábado", franja: "09:00–12:00", horario: "Sábado · 09:00–12:00", aula: "Aula 8", capacidad: 30, ocupados: 12, activa: true },
     { id: "ADM-A", materia: "ADM", codigo: "01-2203", docente: "Elena Vidal", dia: "Lunes", franja: "17:00–20:00", horario: "Lunes · 17:00–20:00", aula: "Aula 5", capacidad: 30, ocupados: 18, activa: true },
-    { id: "ECO-A", materia: "ECO", codigo: "01-2210", docente: "Federico Paz", dia: "Martes", franja: "19:00–22:00", horario: "Martes · 19:00–22:00", aula: "Aula 7", capacidad: 28, ocupados: 15, activa: true }
+    { id: "ECO-A", materia: "ECO", codigo: "01-2210", docente: "Federico Paz", dia: "Martes", franja: "19:00–22:00", horario: "Martes · 19:00–22:00", aula: "Aula 7", capacidad: 28, ocupados: 15, activa: true },
+    { id: "MOB-A", materia: "MOB", codigo: "01-1968", docente: "Paula Benítez", dia: "Jueves", franja: "19:00–22:00", horario: "Jueves · 19:00–22:00", aula: "Laboratorio 2", capacidad: 24, ocupados: 12, activa: true }
   ];
 
   const iniciales = [
@@ -218,6 +220,14 @@ const Academico = (() => {
           : "La materia no pertenece a tu plan de estudios."
       },
       {
+        clave: "aprobada",
+        etiqueta: "Sin aprobación previa",
+        ok: Boolean(alumno && grupo && !alumno.aprobadas.includes(grupo.materia)),
+        detalle: alumno && grupo && alumno.aprobadas.includes(grupo.materia)
+          ? "Ya aprobaste esta materia. No necesitás volver a inscribirte."
+          : "La materia todavía no figura como aprobada en tu historia académica."
+      },
+      {
         clave: "periodo",
         etiqueta: "Período abierto",
         ok: Boolean(periodoAbierto),
@@ -254,6 +264,7 @@ const Academico = (() => {
     if (!alumno?.activo) return "Tu usuario no está habilitado para inscribirse.";
     if (!grupo?.activa) return "La comisión ya no está disponible.";
     if (!alumno.plan.includes(grupo.materia)) return "La materia no pertenece a tu plan de estudios.";
+    if (alumno.aprobadas.includes(grupo.materia)) return "Ya aprobaste esta materia. No podés volver a inscribirte.";
     if (!periodoAbierto) return "El período de inscripción está cerrado.";
     const previa = inscripcionVigente(alumno, grupo.materia, registros);
     if (previa) return "Ya tenés una inscripción vigente a esta materia (" + previa.estado + ").";

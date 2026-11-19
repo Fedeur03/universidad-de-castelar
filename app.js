@@ -132,8 +132,23 @@ function guardar(cambios) {
   }
 }
 
+function sanearInscripcionesDeMateriasAprobadas() {
+  const registros = leer()?.registros ?? datos.registros;
+  let cambio = false;
+  const corregidos = registros.map(registro => {
+    const alumno = estudiante(registro.estudiante);
+    const materiaId = comision(registro.comision)?.materia;
+    if (!alumno?.aprobadas.includes(materiaId) || !["Pendiente", "Aprobada", "En curso"].includes(registro.estado)) return registro;
+    cambio = true;
+    return { ...registro, estado: "Rechazada", motivo: "La materia ya figura aprobada en tu historia académica. Se rechazó la inscripción y se liberó el cupo.", resuelta: new Date().toISOString() };
+  });
+  if (cambio) guardar({ registros: corregidos });
+}
+
+sanearInscripcionesDeMateriasAprobadas();
+
 const registrosActuales = () => leer()?.registros ?? datos.registros;
-const pagina = () => ["inicio", "calendario", "oferta", "inscripciones", "novedades", "servicios", "plan", "horarios", "constancias", "mis-constancias", "historia", "calificaciones", "perfil", "docente"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inicio";
+const pagina = () => ["inicio", "calendario", "oferta", "inscripciones", "novedades", "servicios", "plan", "horarios", "constancias", "mis-constancias", "historia", "calificaciones", "perfil", "docente", "cursos", "cargar-notas", "asistencia", "materiales"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inicio";
 const alumnoActual = () => estudiante(datos.alumno) ?? estudiante("S04");
 const perfilAlumno = alumno => ({ telefono: "", direccion: "", correoContacto: alumno.correo ?? "", ...(datos.perfiles?.[alumno.id] ?? {}) });
 const COLORES_AVATAR = ["#2f5f8a", "#2f7a6f", "#8a5a3b", "#6b4b8a", "#b4633c", "#28658a"];
@@ -141,6 +156,11 @@ function avatarGenerico(alumno) {
   const iniciales = alumno.nombre.split(" ").map(parte => parte[0]).slice(0, 2).join("").toUpperCase();
   const color = COLORES_AVATAR[Number(alumno.id.slice(1)) % COLORES_AVATAR.length];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="${color}"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="Manrope,Segoe UI,sans-serif" font-size="28" font-weight="700" fill="white">${iniciales}</text></svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+function avatarDeNombre(nombre) {
+  const iniciales = nombre.split(" ").map(parte => parte[0]).slice(0, 2).join("").toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="#315d7d"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="Arial,sans-serif" font-size="27" font-weight="700" fill="white">${iniciales}</text></svg>`;
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
 const avatarAlumno = alumno => datos.fotos?.[alumno.id] ?? avatarGenerico(alumno);
@@ -217,8 +237,20 @@ function listaServicios(entradas) {
 }
 
 function servicios() {
+  if (datos.rolDocente) return serviciosDocente();
   return `${encabezado("Servicios académicos", "Consultas y trámites de autogestión estudiantil.")}
     <section class="panel" aria-label="Directorio de servicios">${listaServicios(catalogoServicios)}</section>`;
+}
+
+function serviciosDocente() {
+  return `${encabezado("Servicios docentes", "Herramientas para la actividad académica y la gestión de tus cursos.")}
+    <section class="panel"><div class="service-list">
+      <a href="#cursos"><strong>Mis cursos</strong><span>Comisiones a cargo, horarios y estudiantes inscriptos.</span><b>→</b></a>
+      <a href="#cargar-notas"><strong>Cargar calificaciones</strong><span>Registrar evaluaciones para estudiantes de tus comisiones.</span><b>→</b></a>
+      <a href="#asistencia"><strong>Asistencia</strong><span>Planilla de asistencia de cursada.</span><small>Próximamente</small></a>
+      <a href="#docente"><strong>Solicitudes de constancia</strong><span>Revisar, emitir o rechazar solicitudes asignadas.</span><b>→</b></a>
+      <a href="#materiales"><strong>Materiales de cursada</strong><span>Publicaciones y recursos para tus comisiones.</span><small>Próximamente</small></a>
+    </div></section>`;
 }
 
 const tiposConstancia = new Map([
@@ -243,7 +275,7 @@ function constancias() {
         return `<option value="${item.id}">${materia(grupo.materia).nombre} · ${grupo.codigo} · ${grupo.docente}</option>`;
       }).join("")}</select></label>
       <label>Fecha del examen<input type="date" name="examen" max="${hoyAcademico()}" required></label>
-      <details><summary>Agregar motivo o destinatario (opcional)</summary><label>Motivo o destinatario<textarea name="motivo" maxlength="300" rows="2"></textarea></label></details>
+      <details><summary>Indicar destinatario (opcional)</summary><label>¿A quién va dirigida?<input name="destinatario" maxlength="120" placeholder="Ej.: Secretaría Académica"></label></details>
       <p id="resultado-constancia" role="status" hidden></p>
       <div class="dialog-actions"><a class="button secondary" href="#mis-constancias">Cancelar</a><button class="button secondary" type="reset">Limpiar</button><button class="button">Solicitar constancia</button></div>
     </form>` : '<p>No poseés comisiones habilitadas para solicitar constancias.</p><a class="inline-link" href="#oferta">Consultar oferta académica</a>'}
@@ -251,20 +283,31 @@ function constancias() {
 }
 
 let paginaConstancias = 1;
+let mostrarArchivadas = false;
+let mensajeConstancias = "";
 function misConstancias() {
-  const solicitudes = (datos.constancias ?? []).filter(item => item.estudiante === alumnoActual().id).slice().reverse();
-  const porPagina = 3;
+  if (datos.rolDocente) return misConstanciasDocente();
+  const propias = (datos.constancias ?? []).filter(item => item.estudiante === alumnoActual().id).slice().reverse();
+  const archivadas = propias.filter(item => item.archivada && ["Emitido", "Rechazado"].includes(item.estado));
+  const solicitudes = propias.filter(item => mostrarArchivadas ? item.archivada : !item.archivada);
+  const porPagina = 6;
   const paginas = Math.max(1, Math.ceil(solicitudes.length / porPagina));
   paginaConstancias = Math.min(paginaConstancias, paginas);
   const inicio = (paginaConstancias - 1) * porPagina;
-  return `${encabezado("Mis constancias", "Historial de solicitudes de constancia de examen.")}
-    <section class="panel"><a class="button" href="#constancias">Solicitar constancia</a>
+  const aviso = mensajeConstancias ? `<p class="inline-alert ok" role="status">${mensajeConstancias}</p>` : "";
+  mensajeConstancias = "";
+  return `${encabezado(mostrarArchivadas ? "Constancias archivadas" : "Mis constancias", "Historial de solicitudes de constancia de examen.")}
+    <section class="panel"><div class="cert-toolbar"><a class="button" href="#constancias">Solicitar constancia</a>${archivadas.length || mostrarArchivadas ? `<button class="button secondary" id="toggle-archivadas" data-toggle-archivadas aria-pressed="${mostrarArchivadas}">${mostrarArchivadas ? "Volver a mis constancias" : `Ver archivadas (${archivadas.length})`}</button>` : ""}</div>
+    ${aviso}
     ${solicitudes.length ? `<div class="request-history">${solicitudes.slice(inicio, inicio + porPagina).map(item => {
       const grupo = comision(item.comision);
-      return `<article><div><strong>${tiposConstancia.get(item.tipo) ?? "Constancia de examen"}</strong><p>${materia(grupo.materia).nombre} · Comisión ${grupo.codigo}</p><small>${item.examen.split("-").reverse().join("/")} · ${grupo.docente}</small></div>
-      <div>${estado(item.estado)} <small class="id-solicitud">Solicitud ${item.id}</small>
-      ${item.estado === "Emitido" ? `<button class="button secondary" data-descargar="${item.id}">Descargar constancia</button>` : ""}
-      ${item.estado === "Rechazado" ? `<p>${escapar(item.observaciones)}</p>` : ""}</div></article>`;
+      const destinatario = item.destinatario || item.motivo;
+      const resuelta = ["Emitido", "Rechazado"].includes(item.estado);
+      return `<article class="cert-row"><div><strong>${tiposConstancia.get(item.tipo) ?? "Constancia de examen"}</strong><p>${materia(grupo.materia).nombre} · Comisión ${grupo.codigo}</p><small>${item.examen.split("-").reverse().join("/")} · ${grupo.docente}${destinatario ? ` · Dirigida a: ${escapar(destinatario)}` : ""}</small></div>
+      <div class="request-actions">${estado(item.estado)} <small class="id-solicitud">Solicitud ${folioConstancia(item)}</small>
+      ${item.estado === "Emitido" ? `<button class="button secondary" data-descargar="${item.id}">Descargar PDF</button>` : ""}
+      ${resuelta ? `<button class="button secondary mini archive-action" data-${mostrarArchivadas ? "restaurar" : "archivar"}="${item.id}">${mostrarArchivadas ? "Restaurar" : "Archivar"}</button>` : ""}
+      </div>${item.estado === "Rechazado" ? `<p class="request-note">${escapar(item.observaciones)}</p>` : ""}</article>`;
     }).join("")}</div>` : '<p>Todavía no solicitaste constancias.</p>'}
     ${paginas > 1 ? `<nav class="pagination" aria-label="Páginas de constancias">
       <button class="button secondary" data-pagina-constancia="-1" ${paginaConstancias === 1 ? "disabled" : ""}>Anterior</button>
@@ -274,21 +317,31 @@ function misConstancias() {
 }
 
 const escapar = valor => String(valor ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function folioConstancia(item) {
+  if (item.id.startsWith("SIM-C-")) return item.id.slice(6);
+  if (/^[\da-f]{8}-[\da-f-]{27}$/i.test(item.id)) return item.id.slice(0, 8).toUpperCase();
+  return item.id;
+}
 let docenteDemo = "";
 function docente() {
   const docentes = [...new Set(comisiones.map(grupo => grupo.docente))];
+  if (datos.rolDocente) docenteDemo = datos.rolDocente;
   docenteDemo ||= docentes[0];
   const solicitudes = (leer()?.constancias ?? []).filter(item => item.docente === docenteDemo);
   return `${encabezado("Resolver certificados", "Perfil Docente · Simulación local para la presentación")}
-    <section class="panel"><label>Docente de prueba<select id="docente-demo">${docentes.map(nombre => `<option ${nombre === docenteDemo ? "selected" : ""}>${nombre}</option>`).join("")}</select></label>
-    ${solicitudes.length ? solicitudes.map(item => `<article class="panel">
-      <h2>${tiposConstancia.get(item.tipo) ?? "Constancia de examen"}</h2>
-      <p>${estudiante(item.estudiante).nombre} · ${materia(comision(item.comision).materia).nombre} · Examen ${item.examen}</p>
-      <p>Solicitud ${item.id} · ${estado(item.estado)}</p>
-      ${item.estado === "Solicitado" ? `<form class="form-stack" data-resolver-certificado="${item.id}">
-      <label>Resolución<select name="resolucion"><option value="Emitido">Emitir</option><option value="Rechazado">Rechazar</option></select></label>
-      <label>Motivo del rechazo<input name="observaciones" maxlength="300"></label>
-      <button class="button">Confirmar resolución</button></form>` : "<p>Trámite finalizado.</p>"}</article>`).join("") : "<p>No hay solicitudes para este docente.</p>"}</section>`;
+    <section class="panel teacher-inbox">${datos.rolDocente ? `<p class="teacher-identity"><strong>${datos.rolDocente}</strong> · Docente de prueba</p>` : `<label class="teacher-picker">Docente de prueba<select id="docente-demo">${docentes.map(nombre => `<option ${nombre === docenteDemo ? "selected" : ""}>${nombre}</option>`).join("")}</select></label>`}
+    ${solicitudes.length ? `<div class="teacher-requests">${solicitudes.map(item => {
+      const grupo = comision(item.comision);
+      const destinatario = item.destinatario || item.motivo;
+      return `<article class="teacher-request">
+        <div class="teacher-request-head"><div class="teacher-request-main"><h2>${tiposConstancia.get(item.tipo) ?? "Constancia de examen"}</h2><p>${estudiante(item.estudiante).nombre} · ${materia(grupo.materia).nombre} · Examen ${item.examen.split("-").reverse().join("/")}</p>${destinatario ? `<small>Dirigida a: ${escapar(destinatario)}</small>` : ""}</div><div class="teacher-request-state">${estado(item.estado)}<small class="id-solicitud">Solicitud ${folioConstancia(item)}</small></div></div>
+        ${item.estado === "Solicitado" ? `<form class="teacher-resolve" data-resolver-certificado="${item.id}">
+          <label>Resolución<select name="resolucion"><option value="Emitido">Emitir</option><option value="Rechazado">Rechazar</option></select></label>
+          <label>Motivo del rechazo<input name="observaciones" maxlength="300" placeholder="Solo si rechazás la solicitud"></label>
+          <button class="button mini">Guardar resolución</button></form>` : `<p class="teacher-resolved">Trámite resuelto${item.fechaEmision ? ` · ${item.fechaEmision.slice(0, 10).split("-").reverse().join("/")}` : ""}</p>`}
+        ${item.estado === "Rechazado" && item.observaciones ? `<p class="request-note">${escapar(item.observaciones)}</p>` : ""}
+      </article>`;
+    }).join("")}</div>` : "<p>No hay solicitudes para este docente.</p>"}</section>`;
 }
 
 function estadoMateria(alumno, materiaId) {
@@ -520,7 +573,9 @@ function vistaCalendario() {
 }
 
 function inicio() {
+  if (datos.rolDocente) return inicioDocente();
   const alumno = alumnoActual();
+  const habilitado = Boolean(alumno.activo);
   const datosCarrera = carrera(alumno);
   const fac = facultad(alumno);
   const resumen = resumenAcademico(alumno);
@@ -530,6 +585,7 @@ function inicio() {
       <h1>Hola, ${primerNombre(alumno.nombre)}</h1>
       <p class="hero-career">${datosCarrera.nombre}</p>
       <p class="hero-lead">Período de inscripción abierto</p>
+      <p class="student-enabled ${habilitado ? "is-enabled" : "is-disabled"}" role="status"><span aria-hidden="true"></span>${habilitado ? "Habilitado" : "No habilitado"}</p>
       <div class="hero-actions">
         <a class="button" href="#oferta">Inscribirme a materias ${icono("arrow")}</a>
         <a class="button ghost" href="#calificaciones">Ver mis notas</a>
@@ -618,6 +674,94 @@ function inicio() {
   </section>`;
 }
 
+function misConstanciasDocente() {
+  const solicitudes = (datos.constancias ?? []).filter(item => item.docente === datos.rolDocente).slice().reverse();
+  return `${encabezado("Mis constancias", "Solicitudes de examen asociadas a tus comisiones.")}
+    <section class="panel"><div class="section-heading"><h2>Constancias asignadas</h2><a class="button secondary mini" href="#docente">Gestionar</a></div>
+    ${solicitudes.length ? `<div class="request-history">${solicitudes.map(item => {
+      const grupo = comision(item.comision);
+      const solicitante = estudiante(item.estudiante);
+      return `<article class="cert-row"><div><strong>${tiposConstancia.get(item.tipo) ?? "Constancia de examen"}</strong><p>${materia(grupo.materia).nombre} · Comisión ${grupo.codigo}</p><small>${solicitante.nombre} · Legajo ${solicitante.legajo} · Examen ${item.examen.split("-").reverse().join("/")}${(item.destinatario || item.motivo) ? ` · Dirigida a: ${escapar(item.destinatario || item.motivo)}` : ""}</small></div>
+        <div class="request-actions">${estado(item.estado)}<small class="id-solicitud">Solicitud ${folioConstancia(item)}</small>${item.estado === "Solicitado" ? `<a class="button secondary mini" href="#docente">Revisar</a>` : ""}</div>${item.estado === "Rechazado" && item.observaciones ? `<p class="request-note">${escapar(item.observaciones)}</p>` : ""}</article>`;
+    }).join("")}</div>` : "<p>No hay constancias asignadas a tus comisiones.</p>"}</section>`;
+}
+
+function inicioDocente() {
+  const nombre = datos.rolDocente;
+  const asignadas = comisiones.filter(grupo => grupo.docente === nombre);
+  const solicitudes = (leer()?.constancias ?? []).filter(item => item.docente === nombre);
+  const pendientes = solicitudes.filter(item => item.estado === "Solicitado").length;
+  const padron = asignadas.reduce((total, grupo) => total + padronDocente(grupo).length, 0);
+  return `<section class="hero hero-home">
+    <div class="hero-copy">
+      <p class="term">PORTAL DOCENTE · SEGUNDO CUATRIMESTRE 2026</p>
+      <h1>Hola, ${primerNombre(nombre)}</h1>
+      <p class="hero-career">Actividad académica y gestión de cursadas</p>
+      <p class="hero-lead">Organizá tus cursos, registrá calificaciones y consultá los trámites asignados.</p>
+      <div class="hero-actions">
+        <a class="button" href="#cursos">Mis cursos ${icono("arrow")}</a>
+        <a class="button ghost" href="#cargar-notas">Cargar notas</a>
+      </div>
+    </div>
+    <aside class="hero-profile" aria-label="Resumen de actividad docente">
+      <h2>Resumen de cursada</h2>
+      <span>Facultad de Ingeniería y Tecnología · 2.º cuatrimestre 2026</span>
+      <dl class="hero-mini">
+        <div><dt>Comisiones</dt><dd>${asignadas.length}</dd></div>
+        <div><dt>Estudiantes</dt><dd>${padron}</dd></div>
+        <div><dt>Trámites pendientes</dt><dd>${pendientes}</dd></div>
+      </dl>
+    </aside>
+  </section>
+  <nav class="quick-links" aria-label="Herramientas docentes">
+    <a class="quick-card" href="#cursos"><span class="quick-icon">${icono("book")}</span><span class="quick-text"><strong>Mis cursos</strong><small>Consultá comisiones, horarios y padrones.</small></span><span class="quick-arrow">${asignadas.length} comisión${asignadas.length === 1 ? "" : "es"} →</span></a>
+    <a class="quick-card" href="#cargar-notas"><span class="quick-icon">${icono("check")}</span><span class="quick-text"><strong>Cargar calificaciones</strong><small>Registrá notas de evaluaciones de tus cursos.</small></span><span class="quick-arrow">Abrir carga →</span></a>
+    <a class="quick-card" href="#asistencia"><span class="quick-icon">${icono("calendar")}</span><span class="quick-text"><strong>Asistencia</strong><small>Planillas de asistencia por comisión.</small></span><span class="quick-arrow">Disponible próximamente →</span></a>
+    <a class="quick-card" href="#materiales"><span class="quick-icon">${icono("link")}</span><span class="quick-text"><strong>Materiales de cursada</strong><small>Recursos y comunicaciones para estudiantes.</small></span><span class="quick-arrow">Disponible próximamente →</span></a>
+  </nav>
+  <div class="home-grid">
+    <section class="panel context"><div class="section-heading"><h2>Agenda de cursada</h2><a class="inline-link" href="#cursos">Ver mis cursos</a></div>
+      ${asignadas.length ? `<div class="service-list">${asignadas.map(grupo => `<div><strong>${materia(grupo.materia).nombre} · Com. ${grupo.codigo}</strong><span>${grupo.horario} · ${grupo.aula}</span><small>${padronDocente(grupo).length} estudiantes en el padrón</small></div>`).join("")}</div>` : "<p>No hay comisiones asignadas en esta demo.</p>"}
+    </section>
+    <section class="panel period"><p class="eyebrow">Gestión académica</p><h2>Trámites asignados</h2><p>Las constancias se asignan según el docente registrado en cada comisión.</p><p class="period-state"><span></span> ${pendientes} solicitud${pendientes === 1 ? " pendiente" : "es pendientes"}</p><a class="button" href="#docente">Revisar constancias ${icono("arrow")}</a><p><a class="inline-link" href="#mis-constancias">Consultar historial completo</a></p></section>
+  </div>
+  <section class="panel home-news"><div class="section-heading"><h2>Herramientas del portal</h2><a class="inline-link" href="#servicios">Ver servicios docentes →</a></div>
+    <div class="service-list"><a href="#cargar-notas"><strong>Calificaciones</strong><span>La carga de notas está disponible como demostración local.</span><b>→</b></a><a href="#asistencia"><strong>Asistencia</strong><span>La planilla por clase está en preparación.</span><small>Próximamente</small></a></div>
+  </section>`;
+}
+
+function padronDocente(grupo) {
+  const ids = new Set(registrosActuales().filter(item => item.comision === grupo.id && ["Aprobada", "En curso", "Finalizada"].includes(item.estado)).map(item => item.estudiante));
+  return [...ids].map(id => estudiante(id)).filter(Boolean);
+}
+
+function cursosDocente() {
+  const asignadas = comisiones.filter(grupo => grupo.docente === datos.rolDocente);
+  return `${encabezado("Mis cursos", "Comisiones, horarios y estudiantes inscriptos a tu cargo.")}
+    <section class="panel"><div class="request-history">${asignadas.map(grupo => {
+      const padron = padronDocente(grupo);
+      return `<article><div><strong>${materia(grupo.materia).nombre}</strong><p>Comisión ${grupo.codigo} · ${grupo.horario}</p><small>${grupo.aula} · ${padron.length} estudiante${padron.length === 1 ? "" : "s"}</small></div><div><a class="button secondary" href="#cargar-notas">Cargar notas</a><a class="inline-link" href="#asistencia">Asistencia →</a></div>${padron.length ? `<ul>${padron.map(alumno => `<li>${alumno.nombre} · Legajo ${alumno.legajo}</li>`).join("")}</ul>` : "<p>Todavía no hay estudiantes en el padrón.</p>"}</article>`;
+    }).join("") || "<p>No hay comisiones asignadas.</p>"}</div></section>`;
+}
+
+function cargarNotasDocente() {
+  const asignadas = comisiones.filter(grupo => grupo.docente === datos.rolDocente);
+  const opciones = asignadas.flatMap(grupo => padronDocente(grupo).map(alumno => `<option value="${alumno.id}|${grupo.id}">${alumno.nombre} · ${materia(grupo.materia).nombre} · Com. ${grupo.codigo}</option>`)).join("");
+  const notas = (datos.notasDocentes ?? []).filter(item => item.docente === datos.rolDocente).slice().reverse();
+  return `${encabezado("Cargar calificaciones", "Registrá resultados de evaluación para estudiantes de tus comisiones.")}
+    <section class="panel"><p class="legend">Demostración local: las notas se guardan en este navegador y no modifican el historial académico del estudiante.</p>
+      ${opciones ? `<form id="form-nota-docente" class="form-stack"><label>Estudiante y comisión<select name="estudianteComision" required>${opciones}</select></label><div class="form-row"><label>Evaluación<select name="evaluacion"><option>Parcial</option><option>Final</option><option>Trabajo práctico</option><option>Recuperatorio</option></select></label><label>Calificación<input name="calificacion" type="number" min="1" max="10" step="0.5" required></label><label>Fecha<input name="fecha" type="date" max="${hoyAcademico()}" required></label></div><button class="button">Guardar calificación en la demo</button><p id="resultado-nota" role="status" hidden></p></form>` : "<p>No hay estudiantes habilitados en tus comisiones para cargar notas.</p>"}
+    </section>
+    ${notas.length ? `<section class="panel"><h2>Notas cargadas en esta sesión</h2><div class="request-history">${notas.map(item => `<article><div><strong>${estudiante(item.estudiante).nombre} · ${item.evaluacion}</strong><p>${materia(comision(item.comision).materia).nombre} · Comisión ${comision(item.comision).codigo}</p><small>${item.fecha.split("-").reverse().join("/")}</small></div><div><strong>${item.calificacion}/10</strong></div></article>`).join("")}</div></section>` : ""}`;
+}
+
+function moduloDocente(ruta) {
+  const asistencia = ruta === "asistencia";
+  const titulo = asistencia ? "Asistencia" : "Materiales de cursada";
+  const texto = asistencia ? "La planilla de asistencia por comisión formará parte de las herramientas docentes." : "Este espacio permitirá compartir guías, bibliografía y avisos con cada comisión.";
+  return `${encabezado(titulo, texto)}<section class="panel"><p class="status pendiente">Módulo en preparación</p><p>Esta función está prevista para el portal docente, pero todavía no está conectada en la demo.</p><a class="button secondary" href="#cursos">Volver a mis cursos</a></section>`;
+}
+
 function validacionPreview(grupo) {
   const checks = validaciones(alumnoActual(), grupo, registrosActuales(), periodoAbierto);
   const fallas = checks.filter(item => !item.ok);
@@ -644,7 +788,6 @@ function oferta() {
     </div>
     <div class="offer-grid">
       <aside class="panel subjects"><h2>Materias</h2>
-        <label class="check"><input id="todas" type="checkbox" ${mostrarTodo ? "checked" : ""}> Incluir otras carreras</label>
         <label class="selector-materia">Materia<select id="selector-materia">${listado.map(item => `<option value="${item.id}" ${item.id === elegida.id ? "selected" : ""}>${item.codigo} · ${item.nombre}</option>`).join("")}</select></label>
         <div class="subject-list">${listado.map(item => `<button type="button" data-materia="${item.id}" aria-pressed="${item.id === elegida.id}"><small>${item.codigo}</small><span>${item.nombre}</span></button>`).join("")}</div>
         <p class="legend">${alumno.plan.length} materias en tu plan · ${alumno.aprobadas.length} aprobadas</p>
@@ -760,6 +903,7 @@ function acceso() {
         <button class="button" type="submit">${registro ? "Activar cuenta e ingresar" : "Ingresar"}</button>
       </form>
       <div class="access-options">
+        ${registro ? "" : '<button class="text-button" type="button" data-ingreso-docente>Ingresar como docente de prueba</button>'}
         <button class="text-button" type="button" data-acceso="${registro ? "login" : "registro"}">${registro ? "Volver a iniciar sesión" : "¿Primera vez? Activar cuenta"}</button>
         ${registro ? "" : '<button class="text-button" type="button" data-demo-acceso>Ingresar con cuenta de demostración</button>'}
       </div>
@@ -782,6 +926,7 @@ async function derivarClave(texto, sal) {
 }
 
 function perfil() {
+  if (datos.rolDocente) return perfilDocente();
   const alumno = alumnoActual();
   const datosCarrera = carrera(alumno);
   const fac = facultad(alumno);
@@ -841,6 +986,38 @@ function perfil() {
     </div>`;
 }
 
+function perfilDocente() {
+  const nombre = datos.rolDocente;
+  const asignadas = comisiones.filter(grupo => grupo.docente === nombre);
+  const solicitudes = (leer()?.constancias ?? []).filter(item => item.docente === nombre);
+  return `${encabezado("Mi perfil", "Datos del perfil docente y actividad académica asignada.")}
+    <div class="profile-layout">
+      <section class="panel profile-card">
+        <div class="profile-avatar"><img id="foto-perfil" src="${avatarDeNombre(nombre)}" alt="Iniciales de ${nombre}"></div>
+        <h2>${nombre}</h2><p class="muted">Docente · Facultad de Ingeniería y Tecnología</p>
+        <p class="legend">Perfil de prueba para recorrer la gestión de constancias en esta demostración.</p>
+        <a class="button" href="#docente">Abrir vista docente</a>
+      </section>
+      <div class="profile-main">
+        <section class="panel"><h2>Datos institucionales</h2><dl class="profile-data">
+          <div><dt>Nombre</dt><dd>${nombre}</dd></div><div><dt>Correo institucional</dt><dd>marina.ortiz@campus.example</dd></div>
+          <div><dt>Área</dt><dd>${asignadas.length ? materia(asignadas[0].materia).nombre : "Bases de Datos"}</dd></div>
+          <div><dt>Facultad</dt><dd>Facultad de Ingeniería y Tecnología</dd></div>
+          <div><dt>Rol</dt><dd>Docente de comisión</dd></div>
+          <div><dt>Comisiones asignadas</dt><dd>${asignadas.length}</dd></div>
+        </dl></section>
+        <section class="panel"><div class="section-heading"><h2>Comisiones a cargo</h2><a class="inline-link" href="#docente">Gestionar solicitudes</a></div>
+          ${asignadas.length ? `<div class="service-list">${asignadas.map(grupo => `<div><strong>${materia(grupo.materia).nombre}</strong><span>Comisión ${grupo.codigo} · ${grupo.dia} · ${grupo.horario}</span><small>${grupo.aula}</small></div>`).join("")}</div>` : "<p>No hay comisiones asignadas.</p>"}
+        </section>
+        <section class="panel"><h2>Actividad en constancias</h2><div class="summary-stats compact">
+          <div class="stat"><span>Solicitadas</span><strong>${solicitudes.filter(item => item.estado === "Solicitado").length}</strong></div>
+          <div class="stat"><span>Emitidas</span><strong>${solicitudes.filter(item => item.estado === "Emitido").length}</strong></div>
+          <div class="stat"><span>Rechazadas</span><strong>${solicitudes.filter(item => item.estado === "Rechazado").length}</strong></div>
+        </div><a class="inline-link" href="#mis-constancias">Ver constancias →</a></section>
+      </div>
+    </div>`;
+}
+
 function banner() {
   if (!aviso) return "";
   const grupo = aviso.comision ? comision(aviso.comision) : null;
@@ -885,28 +1062,43 @@ function render(transicion = false) {
   const ruta = pagina();
   const alumno = alumnoActual();
   const cerrada = Boolean(datos.cerrada);
-  nombreSesion.textContent = cerrada ? "Acceso al portal" : alumno.nombre;
-  sesionCarrera.textContent = cerrada ? "" : alumno.carrera;
+  nombreSesion.textContent = cerrada ? "Acceso al portal" : datos.rolDocente || alumno.nombre;
+  sesionCarrera.textContent = cerrada ? "" : datos.rolDocente ? "Docente · Bases de Datos" : alumno.carrera;
   sesionCarrera.hidden = cerrada;
   sesionAccion.textContent = cerrada ? "Iniciar sesión" : "Cerrar sesión";
   document.querySelector("#mis-constancias").hidden = cerrada;
+  ["nav-oferta", "nav-servicios", "nav-cursos", "nav-notas", "nav-docencia"].forEach(id => document.querySelectorAll(`#${id}`).forEach(link => {
+    link.hidden = cerrada || (Boolean(datos.rolDocente) ? ["nav-oferta", "nav-servicios"].includes(id) : ["nav-cursos", "nav-notas", "nav-docencia"].includes(id));
+    if (id === "nav-servicios") link.textContent = datos.rolDocente ? "Servicios docentes" : "Servicios académicos";
+    if (id === "nav-docencia") link.textContent = datos.rolDocente ? "Gestión docente" : "Vista docente";
+  }));
   botonPerfil.hidden = cerrada;
   avatarPerfil.hidden = cerrada;
-  avatarSesion.src = cerrada ? "perfil.svg" : avatarAlumno(alumno);
+  avatarSesion.src = cerrada ? "perfil.svg" : datos.rolDocente ? avatarDeNombre(datos.rolDocente) : avatarAlumno(alumno);
   document.querySelectorAll(".nav a, .drawer-links a").forEach(link => {
     const activo = link.hash === "#" + ruta || (["plan", "horarios", "constancias", "historia", "calificaciones", "perfil", "inscripciones"].includes(ruta) && link.hash === "#servicios");
     if (activo) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
   main.dataset.vista = cerrada ? "acceso" : ruta;
-  const vistas = { inicio, calendario: vistaCalendario, oferta, inscripciones: historial, novedades, servicios, plan, horarios, constancias, "mis-constancias": misConstancias, historia, calificaciones, perfil, docente };
+  const vistas = { inicio, calendario: vistaCalendario, oferta, inscripciones: historial, novedades, servicios, plan, horarios, constancias, "mis-constancias": misConstancias, historia, calificaciones, perfil, docente, cursos: cursosDocente, "cargar-notas": cargarNotasDocente, asistencia: () => moduloDocente("asistencia"), materiales: () => moduloDocente("materiales") };
+  const soloEstudiante = ["oferta", "inscripciones", "plan", "horarios", "constancias", "historia", "calificaciones"];
+  const soloDocente = ["docente", "cursos", "cargar-notas", "asistencia", "materiales"];
+  const bloqueada = (datos.rolDocente && soloEstudiante.includes(ruta)) || (!datos.rolDocente && soloDocente.includes(ruta));
+  const vistaBloqueada = datos.rolDocente
+    ? vistaRol("Esta sección es para estudiantes", "La inscripción a materias y los trámites estudiantiles no están disponibles en el perfil docente.", "Volver al inicio", "inicio")
+    : vistaRol("Acceso docente", "Iniciá sesión con el perfil docente de prueba para abrir esta herramienta.", "Ir al inicio", "inicio");
   const publicas = new Set(["calendario"]);
   const vista = datos.cerrada && !publicas.has(ruta)
     ? acceso()
     : datos.cerrada
       ? (vistas[ruta] ?? vistaCalendario)()
-      : banner() + (vistas[ruta] ?? inicio)();
+      : banner() + (bloqueada ? vistaBloqueada : (vistas[ruta] ?? inicio)());
   main.innerHTML = `<div class="${transicion ? "view-enter" : ""}">${vista}</div>`;
+}
+
+function vistaRol(titulo, descripcion, accion, destino) {
+  return `${encabezado(titulo, descripcion)}<section class="panel"><a class="button" href="#${destino}">${accion}</a></section>`;
 }
 
 function modal(html, ancho = false) {
@@ -1184,23 +1376,95 @@ main.addEventListener("change", event => {
     if (previa) previa.innerHTML = validacionPreview(grupo);
     return;
   }
-  if (event.target.id !== "todas") return;
-  mostrarTodo = event.target.checked;
-  comisionElegida = "";
-  render();
-  document.querySelector("#todas").focus();
 });
+
+function descargarConstanciaPDF(item) {
+  const alumno = estudiante(item.estudiante);
+  const grupo = comision(item.comision);
+  const safe = valor => String(valor ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[·–—]/g, "-").replace(/[^\x20-\x7E]/g, "").replace(/[\\()]/g, "\\$&");
+  const color = hex => hex.match(/[0-9a-f]{2}/gi).map(x => parseInt(x, 16) / 255).map(x => x.toFixed(3)).join(" ");
+  const text = (x, y, size, value, hex = "172e43") => `BT /F1 ${size} Tf ${color(hex)} rg ${x} ${y} Td (${safe(value)}) Tj ET\n`;
+  const examen = item.examen.split("-").reverse().join("/");
+  const emitida = item.fechaEmision ? item.fechaEmision.slice(0, 10).split("-").reverse().join("/") : hoyAcademico().split("-").reverse().join("/");
+  let stream = "0.063 0.137 0.247 rg 0 790 595 52 re f\n";
+  stream += "1 1 1 rg 48 801 30 30 re f\n" + text(58, 808, 16, "U", "172e43");
+  stream += text(92, 817, 15, "UNIVERSIDAD DE CASTELAR", "ffffff") + text(92, 799, 9, "SECRETARIA ACADEMICA", "dce6ef");
+  stream += "0.82 0.86 0.90 RG 48 754 m 547 754 l S\n";
+  stream += text(48, 722, 10, "DOCUMENTO DE DEMOSTRACION", "9a6b22");
+  stream += text(48, 688, 23, safe(tiposConstancia.get(item.tipo) ?? "Constancia de examen"));
+  stream += text(48, 650, 11, "Se deja constancia de que", "536577");
+  stream += text(48, 619, 19, alumno.nombre);
+  stream += text(48, 597, 11, `Legajo ${alumno.legajo}`, "536577");
+  stream += "0.91 0.94 0.96 rg 48 488 499 82 re f\n";
+  stream += text(64, 548, 9, "MATERIA Y COMISION", "536577");
+  stream += text(64, 526, 13, `${materia(grupo.materia).nombre} - Comision ${grupo.codigo}`);
+  stream += text(64, 503, 10, `${grupo.horario} - ${grupo.aula}`, "536577");
+  stream += text(48, 454, 10, `Fecha de examen: ${examen}`);
+  stream += text(48, 431, 10, `Docente responsable: ${item.docente}`);
+  if (item.destinatario || item.motivo) stream += text(48, 408, 10, `Dirigida a: ${item.destinatario || item.motivo}`);
+  stream += "0.82 0.86 0.90 RG 48 370 m 547 370 l S\n";
+  stream += text(48, 343, 10, `Solicitud ${item.id} - Emitida el ${emitida}`, "536577");
+  stream += "0.063 0.137 0.247 RG 392 283 155 54 re S\n";
+  stream += text(406, 315, 9, "REGISTRO DE DEMOSTRACION", "536577");
+  stream += text(426, 294, 10, "CONSTANCIA EMITIDA", "172e43");
+  stream += "0.82 0.86 0.90 RG 48 64 m 547 64 l S\n";
+  stream += text(48, 45, 8, "SIMULACION LOCAL - SIN VALIDEZ ACADEMICA NI ADMINISTRATIVA", "9a4b36");
+  const streamLength = new TextEncoder().encode(stream).length;
+  const objetos = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    `<< /Length ${streamLength} >>\nstream\n${stream}endstream`
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objetos.forEach((objeto, i) => { offsets.push(pdf.length); pdf += `${i + 1} 0 obj\n${objeto}\nendobj\n`; });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objetos.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach(offset => { pdf += `${String(offset).padStart(10, "0")} 00000 n \n`; });
+  pdf += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  const enlace = document.createElement("a");
+  enlace.href = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" }));
+  enlace.download = `constancia-${safe(item.id).replace(/\s+/g, "-")}.pdf`;
+  enlace.click();
+  setTimeout(() => URL.revokeObjectURL(enlace.href), 1500);
+}
+
+async function archivarConstancia(id, archivar) {
+  await operacionAcademica(() => {
+    const constancias = leer()?.constancias ?? [];
+    const item = constancias.find(registro => registro.id === id && registro.estudiante === alumnoActual().id);
+    if (!item || !["Emitido", "Rechazado"].includes(item.estado)) return;
+    const fechaArchivo = archivar ? new Date().toISOString() : null;
+    if (!guardar({ constancias: constancias.map(registro => registro.id === id ? { ...registro, archivada: archivar, fechaArchivo } : registro) })) {
+      falloGuardado();
+      return;
+    }
+    mostrarArchivadas = false;
+    paginaConstancias = 1;
+    mensajeConstancias = archivar ? "Constancia archivada. Podés verla desde el acceso a archivadas." : "Constancia restaurada a Mis constancias.";
+    render();
+    (main.querySelector("#toggle-archivadas") ?? main.querySelector(".cert-toolbar a"))?.focus({ preventScroll: true });
+  });
+}
 
 main.addEventListener("click", event => {
   const boton = event.target.closest("button");
+  if (boton?.hasAttribute("data-ingreso-docente")) { ingresarDocente(); return; }
+  if (boton?.hasAttribute("data-toggle-archivadas")) {
+    mostrarArchivadas = !mostrarArchivadas;
+    paginaConstancias = 1;
+    render();
+    main.querySelector("#toggle-archivadas")?.focus({ preventScroll: true });
+    return;
+  }
+  if (boton?.dataset.archivar) { archivarConstancia(boton.dataset.archivar, true); return; }
+  if (boton?.dataset.restaurar) { archivarConstancia(boton.dataset.restaurar, false); return; }
   if (boton?.dataset.descargar) {
     const item = (datos.constancias ?? []).find(item => item.id === boton.dataset.descargar && item.estudiante === alumnoActual().id && item.estado === "Emitido");
     if (!item) return;
-    const contenido = ["Universidad De Castelar", "CONSTANCIA DE DEMOSTRACIÓN", tiposConstancia.get(item.tipo) ?? "Constancia de examen", estudiante(item.estudiante).nombre, "Legajo " + estudiante(item.estudiante).legajo, materia(comision(item.comision).materia).nombre, "Fecha de examen " + item.examen, "Docente " + item.docente, "Emitida " + item.fechaEmision, "Solicitud " + item.id].join("\n");
-    const url = URL.createObjectURL(new Blob([contenido], { type: "text/plain;charset=utf-8" }));
-    const enlace = document.createElement("a");
-    enlace.href = url; enlace.download = "constancia-" + item.id + ".txt"; enlace.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    descargarConstanciaPDF(item);
     return;
   }
   if (boton?.dataset.paginaConstancia) {
@@ -1276,6 +1540,9 @@ dialogo.addEventListener("click", event => {
     seleccion = "";
     comisionElegida = "";
     mostrarTodo = false;
+    paginaConstancias = 1;
+    mostrarArchivadas = false;
+    mensajeConstancias = "";
     aviso = null;
     perfilAviso = null;
     render();
@@ -1314,8 +1581,38 @@ function cambiarSesion() {
 }
 
 function entrar(id, activar = false) {
-  guardar({ alumno: id, cerrada: false, activada: activar || datos.activada === true });
+  guardar({ alumno: id, rolDocente: null, cerrada: false, activada: activar || datos.activada === true });
   reiniciarVista();
+}
+
+function prepararDatosDocente() {
+  const guardado = leer() ?? datos;
+  const registros = (guardado.registros ?? datos.registros).slice();
+  const solicitudes = (guardado.constancias ?? []).filter(item => item.id !== "EJEMPLO-DOCENTE");
+  const inscripcionDemo = (id, estudianteId) => {
+    const vigente = registros.find(item => item.estudiante === estudianteId && item.comision === "BDD-A" && ["Aprobada", "En curso", "Finalizada"].includes(item.estado));
+    if (vigente) return vigente.id;
+    registros.push({ id, estudiante: estudianteId, comision: "BDD-A", estado: "Aprobada", motivo: "", fecha: "2026-11-01T12:00:00-03:00", anio: "2026", cuatrimestre: "2" });
+    return id;
+  };
+  const inscripcionFederico = inscripcionDemo("SIM-I-S04-BDD", "S04");
+  const inscripcionNicolas = inscripcionDemo("SIM-I-S06-BDD", "S06");
+  const simuladas = [
+    { id: "SIM-C-2026-041", estudiante: "S01", inscripcion: "I-001", comision: "BDD-A", docente: "Marina Ortiz", tipo: "parcial", examen: "2026-11-10", destinatario: "Secretaría Académica", estado: "Emitido", fecha: "2026-11-10T16:20:00-03:00", fechaEmision: "2026-11-10T16:45:00-03:00" },
+    { id: "SIM-C-2026-052", estudiante: "S04", inscripcion: inscripcionFederico, comision: "BDD-A", docente: "Marina Ortiz", tipo: "final", examen: "2026-11-12", destinatario: "Presentación laboral", estado: "Solicitado", fecha: "2026-11-12T14:10:00-03:00" },
+    { id: "SIM-C-2026-063", estudiante: "S06", inscripcion: inscripcionNicolas, comision: "BDD-A", docente: "Marina Ortiz", tipo: "recuperatorio", examen: "2026-11-14", destinatario: "Área de Bienestar Estudiantil", estado: "Rechazado", observaciones: "La fecha ingresada no coincide con el registro de la mesa. Corregila y volvé a solicitarla.", fecha: "2026-11-14T09:35:00-03:00" }
+  ];
+  const ids = new Set(solicitudes.map(item => item.id));
+  const constancias = [...solicitudes, ...simuladas.filter(item => !ids.has(item.id))];
+  return { registros, constancias };
+}
+
+function ingresarDocente() {
+  const { registros, constancias } = prepararDatosDocente();
+  if (!guardar({ rolDocente: "Marina Ortiz", cerrada: false, registros, constancias })) { falloGuardado(); return; }
+  docenteDemo = "Marina Ortiz";
+  location.hash = "docente";
+  render();
 }
 
 function reiniciarVista() {
@@ -1325,6 +1622,9 @@ function reiniciarVista() {
   seleccion = "";
   comisionElegida = "";
   mostrarTodo = false;
+  paginaConstancias = 1;
+  mostrarArchivadas = false;
+  mensajeConstancias = "";
   if (location.hash !== "#inicio") location.hash = "inicio";
   render();
   main.focus({ preventScroll: true });
@@ -1332,6 +1632,31 @@ function reiniciarVista() {
 }
 
 main.addEventListener("submit", async event => {
+  if (event.target.id === "form-nota-docente") {
+    event.preventDefault();
+    const campos = new FormData(event.target);
+    const [estudianteId, comisionId] = String(campos.get("estudianteComision")).split("|");
+    const grupo = comision(comisionId);
+    const calificacion = Number(campos.get("calificacion"));
+    const fechaNota = String(campos.get("fecha"));
+    const asignada = grupo?.docente === datos.rolDocente;
+    const habilitado = grupo && padronDocente(grupo).some(alumno => alumno.id === estudianteId);
+    if (!asignada || !habilitado || !Number.isFinite(calificacion) || calificacion < 1 || calificacion > 10 || !fechaNota || fechaNota > hoyAcademico()) {
+      const mensaje = main.querySelector("#resultado-nota");
+      mensaje.textContent = "Revisá el estudiante, la comisión, la calificación (1 a 10) y la fecha.";
+      mensaje.hidden = false;
+      return;
+    }
+    const notas = leer()?.notasDocentes ?? [];
+    if (!guardar({ notasDocentes: [...notas, { docente: datos.rolDocente, estudiante: estudianteId, comision: comisionId, evaluacion: campos.get("evaluacion"), calificacion, fecha: fechaNota, creada: new Date().toISOString() }] })) {
+      falloGuardado();
+      return;
+    }
+    render();
+    const mensaje = main.querySelector("#resultado-nota");
+    if (mensaje) { mensaje.textContent = "Calificación guardada en esta demostración local."; mensaje.hidden = false; }
+    return;
+  }
   if (event.target.dataset.resolverCertificado) {
     event.preventDefault();
     const formulario = event.target;
@@ -1378,7 +1703,7 @@ main.addEventListener("submit", async event => {
       return;
     }
     const id = crypto.randomUUID();
-    if (!guardar({ constancias: [...solicitudes, { id, estudiante: alumnoActual().id, inscripcion: inscripcion.id, comision: grupo.id, docente: grupo.docente, tipo, examen, motivo: campos.get("motivo").trim(), estado: "Solicitado", fecha: new Date().toISOString() }] })) {
+    if (!guardar({ constancias: [...solicitudes, { id, estudiante: alumnoActual().id, inscripcion: inscripcion.id, comision: grupo.id, docente: grupo.docente, tipo, examen, destinatario: campos.get("destinatario").trim(), estado: "Solicitado", fecha: new Date().toISOString() }] })) {
       respuesta.textContent = "No pudimos registrar la solicitud. Reintentá conservando estos datos.";
       respuesta.hidden = false;
       return;
@@ -1414,6 +1739,10 @@ main.addEventListener("submit", async event => {
   const correo = campos.get("correo").trim().toLowerCase();
   const claveIngresada = campos.get("clave");
   const error = main.querySelector("#error-acceso");
+  if (modoAcceso !== "registro" && correo === "marina.ortiz@campus.example" && claveIngresada === claveDemo) {
+    ingresarDocente();
+    return;
+  }
   const alumnoRegistro = estudiantes.find(item => item.correo.toLowerCase() === correo);
   const cuentas = leer()?.cuentas ?? {};
   if (modoAcceso === "registro") {
@@ -1482,6 +1811,10 @@ window.addEventListener("storage", event => {
   if (!dialogo.open) render();
 });
 
+if (datos.rolDocente) {
+  const { registros, constancias } = prepararDatosDocente();
+  guardar({ registros, constancias });
+}
 render();
 programarPendientes();
 

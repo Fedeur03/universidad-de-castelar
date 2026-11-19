@@ -12,6 +12,7 @@ La sesión y las solicitudes se guardan en el navegador. Cada navegador tiene su
 
 - **Ingreso con estudiante válido**: en la pantalla de acceso se elige un estudiante de prueba (Lucía, Mateo o Sofía) y el portal muestra su carrera, facultad, legajo y contexto académico. También hay acceso por correo y clave de prueba.
 - **Inscripción a materias**: oferta con materias, comisiones, docentes, horarios, aulas y cupos actualizados al instante.
+- **Correlativas y materias aprobadas**: la oferta muestra las materias sin correlativas cumplidas y bloquea volver a cursar materias ya aprobadas. En el perfil demo, Desarrollo de Aplicaciones Móviles requiere Programación Web II.
 - **Validaciones visibles**: carrera, período, inscripción previa, correlativas y cupo se muestran como requisitos antes de confirmar y en el resultado.
 - **Estados Pendiente → Aprobada / Rechazada**: la solicitud se registra en Pendiente, se verifica y queda aprobada o rechazada con su motivo.
 - **Cancelación con liberación de cupo**: en Mis inscripciones se puede cancelar una inscripción vigente o pendiente; el lugar vuelve a estar disponible en la oferta.
@@ -20,8 +21,15 @@ La sesión y las solicitudes se guardan en el navegador. Cada navegador tiene su
 - **Mi perfil**: datos académicos, resumen de avance y carga de foto de perfil (con recorte automático y foto genérica con iniciales si no se carga ninguna).
 - **Calendario académico**: agenda por tramos (inscripción, exámenes y cursada) con fechas y próximos vencimientos, al estilo de un calendario institucional.
 - **Servicios académicos**: plan de estudios, horarios, constancias de examen y novedades.
+- **Constancias de examen**: solicitud con destinatario opcional, bandeja docente con varios casos simulados y descarga de PDF de demostración con aviso de que no tiene validez oficial.
+- **Archivo de constancias**: las solicitudes emitidas o rechazadas se pueden archivar y restaurar; el historial muestra seis por página en filas compactas.
+- **Portal docente**: ingresá como Marina Ortiz para consultar sus cursos, registrar calificaciones de demostración, y revisar o resolver las solicitudes de constancia asignadas. Asistencia y materiales aparecen como módulos en preparación. La carga de notas se guarda localmente y no modifica la historia académica del alumno.
 
-**Alcance:** el prototipo implementa el flujo del perfil **Estudiante**. Los módulos de **Docente** y **Administrador** no forman parte del MVP de la Actividad 4.
+**Alcance:** se trata de una demostración local con roles de estudiante y docente. Los trámites son ficticios y se guardan en el navegador; no hay servidor institucional.
+
+### Acceso docente de prueba
+
+En la pantalla de ingreso, elegí **Ingresar como docente de prueba**. También podés usar `marina.ortiz@campus.example` con la clave `Campus-2026`. El menú ofrece **Mis cursos**, **Cargar notas**, **Servicios docentes** y **Gestión docente**. La inscripción a materias y las vistas de historia académica estudiantil no están habilitadas para este perfil. **Mis constancias** permite consultar las solicitudes asignadas.
 
 ## Demo de 5 minutos
 
